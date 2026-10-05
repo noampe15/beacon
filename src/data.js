@@ -67,6 +67,18 @@ export const deficitRows = [
     count: 79,
     segments: { Critical: 24, High: 29, Medium: 18, Low: 8 },
   },
+  {
+    name: "Key Vaults",
+    count: 38,
+    extra: true,
+    segments: { Critical: 5, High: 7, Medium: 9, Low: 17 },
+  },
+  {
+    name: "Identity Systems",
+    count: 52,
+    extra: true,
+    segments: { Critical: 16, High: 11, Medium: 17, Low: 8 },
+  },
 ]
 
 export const risks = [

@@ -215,7 +215,7 @@ export default function App() {
               <OperationalImpactMatrix units={liveUnits} range={range} />
               <InfrastructureDeficit rows={liveDeficits} />
             </div>
-            <TopRisks rows={filtered} selectedId={selected?.id} onRemediate={setSelected} />
+            <TopRisks rows={filtered} total={liveRisks.length} selectedId={selected?.id} onRemediate={setSelected} />
           </div>
         )}
         {page === "resources" && <ResourcesPage rows={resourceRows} onRemediate={setSelected} />}
