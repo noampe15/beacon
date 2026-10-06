@@ -1,19 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import { Bell, ChevronDown, Download, RefreshCw } from "lucide-react"
-import { rangeOptions } from "../data"
+import { envRiskSeverity, rangeOptions } from "../data"
 import TenantSelector from "./TenantSelector"
-
-const statusStyles = {
-  live: "bg-[#e9f9ee] text-[#16a34a]",
-  degraded: "bg-amber-50 text-amber-700",
-  incident: "bg-rose-50 text-rose-700",
-}
-
-const statusDot = {
-  live: "bg-[#22c55e]",
-  degraded: "bg-amber-500",
-  incident: "bg-rose-500",
-}
+import { EnvRiskBadge } from "./Badges"
 
 function NotificationsBell({ items, onOpenNotification }) {
   const [open, setOpen] = useState(false)
@@ -106,7 +95,8 @@ export default function Header({
   tenants,
   tenantId,
   onTenantChange,
-  tenant,
+  envRisk,
+  envRiskByTenant,
   range,
   setRange,
   onRefresh,
@@ -129,13 +119,16 @@ export default function Header({
           </svg>
         </div>
         <span className="text-[18px] font-semibold tracking-tight text-slate-900">Beacon</span>
-        <TenantSelector tenants={tenants} value={tenantId} onChange={onTenantChange} />
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-medium ${statusStyles[tenant.status]}`}
-        >
-          <span className={`h-1.5 w-1.5 rounded-full ${statusDot[tenant.status]}`} />
-          {tenant.statusLabel}
-        </span>
+        <TenantSelector
+          tenants={tenants}
+          value={tenantId}
+          onChange={onTenantChange}
+          envRiskByTenant={envRiskByTenant}
+        />
+        <EnvRiskBadge
+          severity={envRiskSeverity[envRisk] ?? "None"}
+          label={envRisk}
+        />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 shrink-0">

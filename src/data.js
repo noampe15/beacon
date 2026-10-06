@@ -275,7 +275,7 @@ export const risks = [
     score: 18,
   },
   {
-    id: "r1b",
+    id: "r1m",
     name: "prod-db-postgresql-04",
     type: "RDS",
     icon: "db",
@@ -285,25 +285,25 @@ export const risks = [
     relatedResources: [],
     provider: "AWS",
     rtoDelta: 8,
-    checkedAgo: "checked 4h ago",
+    checkedAgo: "checked 6h ago",
     tbr: "< 2 Mins",
     tbrNote: "Direct Dependency",
     tbrTone: "red",
     priority: "High",
-    score: 79,
+    score: 73,
   },
   {
-    id: "r2b",
+    id: "r2m",
     name: "vm-prod-core-api-07",
     type: "VM",
     icon: "vm",
     businessUnit: "Checkout & Billing",
     tier: "Tier-1",
     issue: "Unpatched kernel CVE-2024-1086",
-    relatedResources: ["vm-prod-core-api-08"],
+    relatedResources: [],
     provider: "Azure",
     rtoDelta: 10,
-    checkedAgo: "checked 2h ago",
+    checkedAgo: "checked 5h ago",
     tbr: "45 Mins",
     tbrNote: "Buffered by Cache",
     tbrTone: "amber",
@@ -311,7 +311,7 @@ export const risks = [
     score: 86,
   },
   {
-    id: "r3b",
+    id: "r3m",
     name: "prod-k8s-cluster-payments-01",
     type: "EKS",
     icon: "k8s",
@@ -321,12 +321,167 @@ export const risks = [
     relatedResources: [],
     provider: "GCP",
     rtoDelta: 6,
-    checkedAgo: "checked 3h ago",
+    checkedAgo: "checked 8h ago",
     tbr: "< 5 Mins",
     tbrNote: "Core Gateway",
     tbrTone: "red",
     priority: "High",
-    score: 72,
+    score: 79,
+  },
+]
+
+export const healthyResources = [
+  {
+    id: "h1",
+    name: "prod-db-catalog-readonly-02",
+    type: "RDS",
+    icon: "db",
+    businessUnit: "Checkout & Billing",
+    tier: "Tier-1",
+    issue: "",
+    relatedResources: [],
+    provider: "AWS",
+    rtoDelta: 0,
+    checkedAgo: "checked 18m ago",
+    tbr: "< 2 Mins",
+    tbrNote: "Read replica",
+    tbrTone: "muted",
+    priority: "None",
+    score: 4,
+    healthy: true,
+  },
+  {
+    id: "h2",
+    name: "prod-vm-payments-web-03",
+    type: "VM",
+    icon: "vm",
+    businessUnit: "Checkout & Billing",
+    tier: "Tier-1",
+    issue: "",
+    relatedResources: [],
+    provider: "Azure",
+    rtoDelta: 0,
+    checkedAgo: "checked 22m ago",
+    tbr: "12 Mins",
+    tbrNote: "Auto-healed",
+    tbrTone: "muted",
+    priority: "None",
+    score: 6,
+    healthy: true,
+  },
+  {
+    id: "h3",
+    name: "prod-eks-search-cluster-02",
+    type: "EKS",
+    icon: "k8s",
+    businessUnit: "Customer Support Systems",
+    tier: "Tier-2",
+    issue: "",
+    relatedResources: [],
+    provider: "AWS",
+    rtoDelta: 0,
+    checkedAgo: "checked 9m ago",
+    tbr: "20 Mins",
+    tbrNote: "Within SLO",
+    tbrTone: "muted",
+    priority: "None",
+    score: 5,
+    healthy: true,
+  },
+  {
+    id: "h4",
+    name: "prod-gcs-static-assets",
+    type: "Storage",
+    icon: "storage",
+    businessUnit: "Customer Support Systems",
+    tier: "Tier-2",
+    issue: "",
+    relatedResources: [],
+    provider: "GCP",
+    rtoDelta: 0,
+    checkedAgo: "checked 14m ago",
+    tbr: "1 Hr",
+    tbrNote: "CDN backed",
+    tbrTone: "muted",
+    priority: "None",
+    score: 3,
+    healthy: true,
+  },
+  {
+    id: "h5",
+    name: "prod-lb-public-edge-01",
+    type: "LB",
+    icon: "net",
+    businessUnit: "Logistics & Supply",
+    tier: "Tier-2",
+    issue: "",
+    relatedResources: [],
+    provider: "AWS",
+    rtoDelta: 0,
+    checkedAgo: "checked 7m ago",
+    tbr: "8 Mins",
+    tbrNote: "Healthy targets",
+    tbrTone: "muted",
+    priority: "None",
+    score: 5,
+    healthy: true,
+  },
+  {
+    id: "h6",
+    name: "prod-cache-catalog-01",
+    type: "Cache",
+    icon: "db",
+    businessUnit: "Checkout & Billing",
+    tier: "Tier-1",
+    issue: "",
+    relatedResources: [],
+    provider: "AWS",
+    rtoDelta: 0,
+    checkedAgo: "checked 11m ago",
+    tbr: "< 4 Mins",
+    tbrNote: "Hit rate 98%",
+    tbrTone: "muted",
+    priority: "None",
+    score: 4,
+    healthy: true,
+  },
+  {
+    id: "h7",
+    name: "prod-kv-secrets-core",
+    type: "Key Vault",
+    icon: "storage",
+    businessUnit: "Internal HR & Billing",
+    tier: "Tier-1",
+    issue: "",
+    relatedResources: [],
+    provider: "Azure",
+    rtoDelta: 0,
+    checkedAgo: "checked 16m ago",
+    tbr: "30 Mins",
+    tbrNote: "Rotated on schedule",
+    tbrTone: "muted",
+    priority: "None",
+    score: 7,
+    healthy: true,
+  },
+  {
+    id: "h8",
+    name: "prod-gke-batch-reports-01",
+    type: "GKE",
+    icon: "k8s",
+    businessUnit: "Internal HR & Billing",
+    tier: "Tier-3",
+    issue: "",
+    relatedResources: [],
+    provider: "GCP",
+    rtoDelta: 0,
+    checkedAgo: "checked 25m ago",
+    tbr: "3 Hrs",
+    tbrNote: "Batch window met",
+    tbrTone: "muted",
+    priority: "None",
+    score: 8,
+    healthy: true,
   },
 ]
 
@@ -343,6 +498,7 @@ export const tenants = [
     rtoShift: 0,
     countFactor: 1,
     namePrefix: "nw",
+    riskShift: 0,
   },
   {
     id: "helios",
@@ -356,6 +512,7 @@ export const tenants = [
     rtoShift: 4,
     countFactor: 0.82,
     namePrefix: "hlx",
+    riskShift: -22,
   },
   {
     id: "atlas",
@@ -369,6 +526,7 @@ export const tenants = [
     rtoShift: 1,
     countFactor: 1.35,
     namePrefix: "atf",
+    riskShift: -42,
   },
   {
     id: "meridian",
@@ -382,6 +540,7 @@ export const tenants = [
     rtoShift: -3,
     countFactor: 0.64,
     namePrefix: "mdc",
+    riskShift: -60,
   },
   {
     id: "lumen",
@@ -395,6 +554,7 @@ export const tenants = [
     rtoShift: 7,
     countFactor: 1.18,
     namePrefix: "lms",
+    riskShift: 11,
   },
 ]
 
@@ -409,11 +569,47 @@ function severityFromScore(score) {
   return "Low"
 }
 
+export function environmentRiskLevel(risks) {
+  const findings = (risks ?? []).filter((row) => !row.healthy && row.issue)
+  if (!findings.length) return "No Risk"
+  const rank = { Critical: 4, High: 3, Medium: 2, Low: 1, None: 0 }
+  const max = findings.reduce((top, row) => Math.max(top, rank[row.priority] ?? 0), 0)
+  if (max === 4) return "Critical Risk"
+  if (max === 3) return "High Risk"
+  if (max === 2) return "Medium Risk"
+  if (max === 1) return "Low Risk"
+  return "No Risk"
+}
+
+export const envRiskSeverity = {
+  "No Risk": "None",
+  "Low Risk": "Low",
+  "Medium Risk": "Medium",
+  "High Risk": "High",
+  "Critical Risk": "Critical",
+}
+
 function scaleCount(n, factor) {
   return Math.max(1, Math.round(n * factor))
 }
 
-export function applyTenant(tenant, { businessUnits, deficitRows, risks, jitter = 0, range }) {
+function mapTenantResource(row, tenant, jitter, rangeRto) {
+  const score = row.healthy
+    ? 0
+    : clamp(row.score + (tenant.riskShift ?? tenant.scoreShift) + jitter, 1, 99)
+  const relatedResources = (row.relatedResources ?? []).map((name) => `${tenant.namePrefix}-${name}`)
+  return {
+    ...row,
+    name: `${tenant.namePrefix}-${row.name}`,
+    relatedResources,
+    affectsCount: relatedResources.length,
+    score,
+    priority: row.healthy ? "None" : severityFromScore(score),
+    rtoDelta: row.healthy ? 0 : Math.max(0, row.rtoDelta + tenant.rtoShift + rangeRto),
+  }
+}
+
+export function applyTenant(tenant, { businessUnits, deficitRows, risks, healthyResources = [], jitter = 0, range }) {
   const rangeRto = range === "Last 30 Days" ? 3 : range === "Last 24 Hours" ? -2 : 0
 
   const units = businessUnits.map((unit) => {
@@ -438,21 +634,10 @@ export function applyTenant(tenant, { businessUnits, deficitRows, risks, jitter 
     }
   })
 
-  const tenantRisks = risks.map((row) => {
-    const score = clamp(row.score + tenant.scoreShift + jitter, 1, 99)
-    const relatedResources = (row.relatedResources ?? []).map((name) => `${tenant.namePrefix}-${name}`)
-    return {
-      ...row,
-      name: `${tenant.namePrefix}-${row.name}`,
-      relatedResources,
-      affectsCount: relatedResources.length,
-      score,
-      priority: severityFromScore(score),
-      rtoDelta: Math.max(0, row.rtoDelta + tenant.rtoShift + rangeRto),
-    }
-  })
+  const tenantRisks = risks.map((row) => mapTenantResource(row, tenant, jitter, rangeRto))
+  const tenantHealthy = healthyResources.map((row) => mapTenantResource(row, tenant, jitter, rangeRto))
 
-  return { units, deficits, risks: tenantRisks }
+  return { units, deficits, risks: tenantRisks, healthy: tenantHealthy }
 }
 
 export function affectsNote(related) {
@@ -760,6 +945,54 @@ export const remediations = {
   },
 }
 
+export function getInvestigation(risk) {
+  const peers = risk.relatedResources ?? []
+  const plan = getRemediation(risk.issue)
+  const isDrift = /iac|drift/i.test(risk.issue)
+  const confidence = isDrift ? 96 : Math.min(95, Math.max(82, 70 + Math.round(risk.score / 8)))
+  const outcome = plan.impact?.[0] ?? "the control gap is closed"
+
+  const narrative = isDrift
+    ? `${risk.name} has drifted from Terraform: live backup retention, Multi-AZ, and deletion protection no longer match the master plan. That gap is adding +${risk.rtoDelta}h to RTO on ${risk.tier} ${risk.businessUnit}. Re-syncing IaC restores a known-good baseline so failover can meet the recovery objective.`
+    : `${risk.issue} on ${risk.name} is adding +${risk.rtoDelta}h to RTO for ${risk.tier} ${risk.businessUnit}. Applying the recommended fix (${plan.actions[0]?.title ?? "remediation"}) will ${outcome.charAt(0).toLowerCase()}${outcome.slice(1)}.`
+
+  return { confidence, narrative, peers }
+}
+
+export function getAiRemediation(risk) {
+  const plan = getRemediation(risk.issue)
+  const addr = risk.name.replace(/-/g, "_")
+  const isDrift = /iac|drift/i.test(risk.issue)
+  const summary = isDrift
+    ? `Reconcile live RDS state with Terraform: restore 14-day backup retention, Multi-AZ, and deletion protection on ${risk.name}. This removes the +${risk.rtoDelta}h RTO gap on ${risk.tier} ${risk.businessUnit} and realigns replicas with the master plan.`
+    : `${plan.why} Suggested IaC below encodes the first action (${plan.actions[0]?.title ?? "patch"}) for ${risk.name}.`
+
+  const diff = isDrift
+    ? [
+        `resource "aws_db_instance" "${addr}" {`,
+        `  identifier                 = "${risk.name}"`,
+        `- backup_retention_period    = 1`,
+        `+ backup_retention_period    = 14`,
+        `- multi_az                   = false`,
+        `+ multi_az                   = true`,
+        `- deletion_protection        = false`,
+        `+ deletion_protection        = true`,
+        `  apply_immediately          = true`,
+        `}`,
+      ]
+    : [
+        `resource "beacon_control" "${addr}" {`,
+        `  name     = "${risk.name}"`,
+        `  issue    = "${risk.issue}"`,
+        `- desired  = "drifted"`,
+        `+ desired  = "compliant"`,
+        `  owner    = "${plan.owner.replaceAll("\n", " ")}"`,
+        `}`,
+      ]
+
+  return { summary, diff, plan }
+}
+
 export function getRemediation(issue) {
   return (
     remediations[issue] ?? {
@@ -795,7 +1028,7 @@ export const buOptions = [
   "Customer Support Systems",
   "Internal HR & Billing",
 ]
-export const priorityOptions = ["Critical", "High", "Medium", "Low"]
+export const priorityOptions = ["Critical", "High", "Medium", "Low", "None"]
 export const sortOptions = [
   { id: "score-desc", label: "Score (high → low)" },
   { id: "score-asc", label: "Score (low → high)" },

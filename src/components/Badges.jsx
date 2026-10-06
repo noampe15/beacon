@@ -2,6 +2,7 @@ export const severityStyles = {
   Critical: {
     text: "text-[#e11d48]",
     bg: "bg-[#fff1f2]",
+    border: "border-[#fda4af]",
     dot: "bg-[#e11d48]",
     bar: "bg-[#e11d48]",
     ring: "#e11d48",
@@ -9,6 +10,7 @@ export const severityStyles = {
   High: {
     text: "text-[#ea580c]",
     bg: "bg-[#fff7ed]",
+    border: "border-[#fdba74]",
     dot: "bg-[#ea580c]",
     bar: "bg-[#f97316]",
     ring: "#ea580c",
@@ -16,6 +18,7 @@ export const severityStyles = {
   Medium: {
     text: "text-[#ca8a04]",
     bg: "bg-[#fefce8]",
+    border: "border-[#facc15]",
     dot: "bg-[#ca8a04]",
     bar: "bg-[#eab308]",
     ring: "#ca8a04",
@@ -23,9 +26,18 @@ export const severityStyles = {
   Low: {
     text: "text-[#a3a31c]",
     bg: "bg-[#f7f8e8]",
+    border: "border-[#c4c43a]",
     dot: "bg-[#c4c43a]",
     bar: "bg-[#d4d45c]",
     ring: "#b8b82e",
+  },
+  None: {
+    text: "text-emerald-700",
+    bg: "bg-emerald-50",
+    border: "border-emerald-300",
+    dot: "bg-emerald-500",
+    bar: "bg-emerald-500",
+    ring: "#16a34a",
   },
 }
 
@@ -35,14 +47,26 @@ export const providerStyles = {
   GCP: "bg-[#ecfdf3] text-[#16a34a]",
 }
 
-export function SeverityBadge({ severity }) {
+export function SeverityBadge({ severity, label }) {
   const style = severityStyles[severity] ?? severityStyles.Medium
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${style.bg} ${style.text}`}
     >
       <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-      {severity}
+      {label ?? severity}
+    </span>
+  )
+}
+
+export function EnvRiskBadge({ severity, label }) {
+  const style = severityStyles[severity] ?? severityStyles.None
+  return (
+    <span
+      className={`inline-flex h-8 items-center gap-2 rounded-full border px-3 text-[12px] font-semibold tracking-tight shadow-sm ${style.bg} ${style.border} ${style.text}`}
+    >
+      <span className={`h-2 w-2 shrink-0 rounded-full ring-2 ring-white ${style.dot}`} />
+      {label ?? severity}
     </span>
   )
 }
@@ -57,12 +81,19 @@ export function ProviderBadge({ provider }) {
   )
 }
 
-export function ScoreRing({ score, size = 40, stroke = 3 }) {
+export function ScoreRing({ score, size = 40, stroke = 3, healthy = false }) {
   const r = (size - stroke * 2) / 2
   const c = 2 * Math.PI * r
   const offset = c - (score / 100) * c
-  const color =
-    score >= 80 ? "#e11d48" : score >= 60 ? "#ea580c" : score >= 40 ? "#ca8a04" : "#b8b82e"
+  const color = healthy || score === 0
+    ? "#16a34a"
+    : score >= 80
+      ? "#e11d48"
+      : score >= 60
+        ? "#ea580c"
+        : score >= 40
+          ? "#ca8a04"
+          : "#b8b82e"
 
   return (
     <div className="relative inline-flex items-center justify-center" style={{ width: size, height: size }}>

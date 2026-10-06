@@ -1,13 +1,9 @@
 import { Building2, Check, ChevronDown } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
+import { severityStyles } from "./Badges"
+import { envRiskSeverity } from "../data"
 
-const statusDot = {
-  live: "bg-[#22c55e]",
-  degraded: "bg-amber-500",
-  incident: "bg-rose-500",
-}
-
-export default function TenantSelector({ tenants, value, onChange }) {
+export default function TenantSelector({ tenants, value, onChange, envRiskByTenant }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const current = tenants.find((t) => t.id === value) ?? tenants[0]
@@ -61,7 +57,11 @@ export default function TenantSelector({ tenants, value, onChange }) {
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-2">
                     <span className="truncate text-[13px] font-medium text-slate-800">{tenant.name}</span>
-                    <span className={`h-1.5 w-1.5 rounded-full ${statusDot[tenant.status]}`} />
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        (severityStyles[envRiskSeverity[envRiskByTenant?.[tenant.id]]] ?? severityStyles.None).dot
+                      }`}
+                    />
                   </span>
                   <span className="block truncate text-[11px] text-slate-400">{tenant.env}</span>
                 </span>
