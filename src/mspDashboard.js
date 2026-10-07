@@ -131,6 +131,68 @@ export const ESCALATION_REASONS = {
   rollback: "Previous auto-fix was rolled back",
 }
 
+export const QUEUE_TENANT_POOL = [
+  { id: "stark", name: "Stark Industrial", initials: "SI" },
+  { id: "lumen", name: "Lumen Studios", initials: "LS" },
+  { id: "helios", name: "Helios Payments", initials: "HP" },
+  { id: "northwind", name: "Northwind Logistics", initials: "NW" },
+  { id: "initech", name: "Initech SaaS", initials: "IN" },
+  { id: "acme", name: "Industrial Illusions", initials: "II" },
+  { id: "globex", name: "Globex Manufacturing", initials: "GX" },
+  { id: "contoso", name: "Contoso Logistics", initials: "CL" },
+  { id: "atlas", name: "Atlas Freight", initials: "AF" },
+  { id: "fabrikam", name: "Fabrikam Health", initials: "FH" },
+  { id: "meridian", name: "Meridian Clinics", initials: "MC" },
+  { id: "wayne", name: "Wayne Retail Group", initials: "WR" },
+  { id: "apex", name: "Apex Media", initials: "AM" },
+  { id: "cobalt", name: "Cobalt Bank", initials: "CB" },
+  { id: "driftwood", name: "Driftwood Hotels", initials: "DH" },
+  { id: "redwood", name: "Redwood Analytics", initials: "RA" },
+  { id: "nimbus", name: "Nimbus Education", initials: "NE" },
+  { id: "harbor", name: "Harbor Insurance", initials: "HI" },
+  { id: "umbrella", name: "Umbrella Pharma", initials: "UP" },
+  { id: "piedpiper", name: "Pied Piper Cloud", initials: "PP" },
+]
+
+export function blastRadius(leadIds, count) {
+  const lead = leadIds
+    .map((id) => QUEUE_TENANT_POOL.find((t) => t.id === id))
+    .filter(Boolean)
+  const rest = QUEUE_TENANT_POOL.filter((t) => !leadIds.includes(t.id))
+  const affectedTenants = [...lead, ...rest].slice(0, count)
+  return {
+    affectedTenants,
+    tenantNames: affectedTenants.slice(0, 2).map((t) => t.name),
+    tenantCount: affectedTenants.length,
+  }
+}
+
+export function queueBlastCount(item) {
+  if (item?.affectedTenants?.length) return item.affectedTenants.length
+  if (typeof item?.tenantCount === "number") return item.tenantCount
+  return item?.tenantNames?.length ?? 0
+}
+
+function formatClock(msAbs) {
+  const total = Math.max(0, Math.round(Math.abs(msAbs) / 60000))
+  const h = Math.floor(total / 60)
+  const m = total % 60
+  if (h <= 0) return `${m}m`
+  return `${h}h ${String(m).padStart(2, "0")}m`
+}
+
+export function slaDeadlineStatus(breachAt, nowTs = Date.now()) {
+  const remain = breachAt - nowTs
+  if (remain <= 0) {
+    return { kind: "breached", text: `Breached ${formatClock(remain)} ago`, tone: "red" }
+  }
+  return {
+    kind: "upcoming",
+    text: `Breaches in ${formatClock(remain)}`,
+    tone: remain <= 60 * 60 * 1000 ? "red" : remain <= 2 * 60 * 60 * 1000 ? "amber" : "slate",
+  }
+}
+
 const now = Date.now()
 
 export const mspQueueItems = [
@@ -139,15 +201,14 @@ export const mspQueueItems = [
     issue: "EventBridge rule targeting deleted bus",
     priority: "Critical",
     score: 96,
-    reason: ESCALATION_REASONS.blast,
-    breachAt: now + 72 * 60 * 1000,
-    confidence: 92,
+    reason: ESCALATION_REASONS.confidence,
+    breachAt: now + (1 * 60 + 12) * 60 * 1000,
+    confidence: 88,
     reversible: true,
-    tenantCount: 9,
-    tenantNames: ["Lumen Studios", "Initech SaaS", "Industrial Illusions"],
+    ...blastRadius(["stark", "northwind"], 9),
     category: "Identity Systems",
     fixSummary: "Recreate default bus and re-point 3 rules",
-    owner: null,
+    owner: { initials: "MA", name: "Maya Reid" },
     rollbackPlan: "Delete the recreated bus and restore the prior EventBridge rule ARNs from last night's config snapshot.",
     rationale: "Nine tenants share the deleted default bus. Auto-apply is blocked because blast radius exceeds 5. Confidence is 92% from identical Terraform diffs.",
     controls: [
@@ -156,17 +217,6 @@ export const mspQueueItems = [
       { framework: "ISO 27001", id: "A.17.1.2", name: "Implementing information security continuity" },
     ],
     cluster: true,
-    affectedTenants: [
-      { id: "lumen", name: "Lumen Studios", initials: "LS" },
-      { id: "initech", name: "Initech SaaS", initials: "IN" },
-      { id: "acme", name: "Industrial Illusions", initials: "II" },
-      { id: "northwind", name: "Northwind Logistics", initials: "NW" },
-      { id: "helios", name: "Helios Payments", initials: "HP" },
-      { id: "stark", name: "Stark Industrial", initials: "SI" },
-      { id: "globex", name: "Globex Manufacturing", initials: "GX" },
-      { id: "contoso", name: "Contoso Logistics", initials: "CL" },
-      { id: "atlas", name: "Atlas Freight", initials: "AF" },
-    ],
   },
   {
     id: "esc-cve",
@@ -174,11 +224,10 @@ export const mspQueueItems = [
     priority: "Critical",
     score: 91,
     reason: ESCALATION_REASONS.confidence,
-    breachAt: now + 48 * 60 * 1000,
+    breachAt: now + (4 * 60 + 20) * 60 * 1000,
     confidence: 84,
     reversible: false,
-    tenantCount: 5,
-    tenantNames: ["Globex Manufacturing", "Northwind Logistics", "Helios Payments"],
+    ...blastRadius(["globex", "northwind"], 5),
     category: "Containers",
     fixSummary: "Roll a canary AMI, then fleet-replace remaining nodes",
     owner: { initials: "MR", name: "Molly Reid" },
@@ -186,13 +235,6 @@ export const mspQueueItems = [
     rationale: "Exploit PoC exists, but mixed kernel families drop model confidence to 84%. Policy requires a human before irreversible node replacement.",
     controls: [{ framework: "ISO 27001", id: "A.12.6.1", name: "Management of technical vulnerabilities" }],
     cluster: true,
-    affectedTenants: [
-      { id: "globex", name: "Globex Manufacturing", initials: "GX" },
-      { id: "northwind", name: "Northwind Logistics", initials: "NW" },
-      { id: "helios", name: "Helios Payments", initials: "HP" },
-      { id: "stark", name: "Stark Industrial", initials: "SI" },
-      { id: "acme", name: "Industrial Illusions", initials: "II" },
-    ],
   },
   {
     id: "esc-blob",
@@ -200,11 +242,10 @@ export const mspQueueItems = [
     priority: "Critical",
     score: 88,
     reason: ESCALATION_REASONS.policy,
-    breachAt: now + 160 * 60 * 1000,
+    breachAt: now + (5 * 60 + 10) * 60 * 1000,
     confidence: 91,
     reversible: true,
-    tenantCount: 6,
-    tenantNames: ["Industrial Illusions", "Fabrikam Health", "Meridian Clinics"],
+    ...blastRadius(["acme", "fabrikam"], 6),
     category: "Identity Systems",
     fixSummary: "Restore private ACL and rotate leaked SAS tokens",
     owner: null,
@@ -215,14 +256,6 @@ export const mspQueueItems = [
       { framework: "HIPAA", id: "164.312(a)(1)", name: "Access control" },
     ],
     cluster: true,
-    affectedTenants: [
-      { id: "acme", name: "Industrial Illusions", initials: "II" },
-      { id: "fabrikam", name: "Fabrikam Health", initials: "FH" },
-      { id: "meridian", name: "Meridian Clinics", initials: "MC" },
-      { id: "umbrella", name: "Umbrella Pharma", initials: "UP" },
-      { id: "northwind", name: "Northwind Logistics", initials: "NW" },
-      { id: "helios", name: "Helios Payments", initials: "HP" },
-    ],
   },
   {
     id: "esc-privileged",
@@ -230,11 +263,10 @@ export const mspQueueItems = [
     priority: "Critical",
     score: 94,
     reason: ESCALATION_REASONS.rollback,
-    breachAt: now + 55 * 60 * 1000,
+    breachAt: now - (2 * 60 + 14) * 60 * 1000,
     confidence: 89,
     reversible: true,
-    tenantCount: 14,
-    tenantNames: ["Stark Industrial", "Lumen Studios", "Initech SaaS"],
+    ...blastRadius(["stark", "lumen"], 14),
     category: "Containers",
     fixSummary: "Enforce restricted PodSecurity and evict privileged pods",
     owner: { initials: "JS", name: "James Shaw" },
@@ -242,11 +274,6 @@ export const mspQueueItems = [
     rationale: "A prior auto-fix was rolled back after a payments sidecar failed. Human review is mandatory on the retry.",
     controls: [{ framework: "SOC 2", id: "CC6.1", name: "Logical access" }],
     cluster: true,
-    affectedTenants: [
-      { id: "stark", name: "Stark Industrial", initials: "SI" },
-      { id: "lumen", name: "Lumen Studios", initials: "LS" },
-      { id: "initech", name: "Initech SaaS", initials: "IN" },
-    ],
   },
   {
     id: "esc-tls",
@@ -254,11 +281,10 @@ export const mspQueueItems = [
     priority: "High",
     score: 73,
     reason: ESCALATION_REASONS.blast,
-    breachAt: now + 185 * 60 * 1000,
+    breachAt: now + 6 * 60 * 60 * 1000,
     confidence: 96,
     reversible: true,
-    tenantCount: 6,
-    tenantNames: ["Northwind Logistics", "Helios Payments", "Contoso Logistics"],
+    ...blastRadius(["northwind", "helios"], 6),
     category: "Identity Systems",
     fixSummary: "Issue ACM certs and swap listeners with overlap",
     owner: null,
@@ -266,14 +292,6 @@ export const mspQueueItems = [
     rationale: "Six tenants share the same expired SAN. Auto-apply is blocked at >5 tenants even though confidence is 96%.",
     controls: [{ framework: "SOC 2", id: "CC6.7", name: "Transmission encryption" }],
     cluster: true,
-    affectedTenants: [
-      { id: "northwind", name: "Northwind Logistics", initials: "NW" },
-      { id: "helios", name: "Helios Payments", initials: "HP" },
-      { id: "contoso", name: "Contoso Logistics", initials: "CL" },
-      { id: "atlas", name: "Atlas Freight", initials: "AF" },
-      { id: "acme", name: "Industrial Illusions", initials: "II" },
-      { id: "lumen", name: "Lumen Studios", initials: "LS" },
-    ],
   },
   {
     id: "esc-rds",
@@ -281,23 +299,17 @@ export const mspQueueItems = [
     priority: "Critical",
     score: 87,
     reason: ESCALATION_REASONS.policy,
-    breachAt: now + 100 * 60 * 1000,
+    breachAt: now - 12 * 60 * 1000,
     confidence: 93,
     reversible: true,
-    tenantCount: 12,
-    tenantNames: ["Initech SaaS", "Helios Payments", "Northwind Logistics"],
+    ...blastRadius(["initech", "helios"], 18),
     category: "Databases",
-    fixSummary: "Enable deletion_protection and lock Terraform",
-    owner: { initials: "AL", name: "Amelia Lewis" },
+    fixSummary: "Enable deletion protection and snapshot before change",
+    owner: { initials: "DK", name: "Daniel King" },
     rollbackPlan: "Flip deletion_protection to false only via break-glass with dual control.",
     rationale: "Production data plane. Enabling protection is reversible in config, but policy still requires a named approver.",
     controls: [{ framework: "SOC 2", id: "CC6.1", name: "Logical access" }],
     cluster: true,
-    affectedTenants: [
-      { id: "initech", name: "Initech SaaS", initials: "IN" },
-      { id: "helios", name: "Helios Payments", initials: "HP" },
-      { id: "northwind", name: "Northwind Logistics", initials: "NW" },
-    ],
   },
   {
     id: "esc-guardduty",
@@ -305,11 +317,10 @@ export const mspQueueItems = [
     priority: "High",
     score: 81,
     reason: ESCALATION_REASONS.confidence,
-    breachAt: now + 240 * 60 * 1000,
+    breachAt: now + 8 * 60 * 60 * 1000,
     confidence: 81,
     reversible: true,
-    tenantCount: 1,
-    tenantNames: ["Pied Piper Cloud"],
+    ...blastRadius(["piedpiper"], 1),
     category: "Identity Systems",
     fixSummary: "Re-enable detector and backfill 24h of findings",
     owner: null,
@@ -317,7 +328,6 @@ export const mspQueueItems = [
     rationale: "Single-tenant, but detector state was changed out-of-band. Confidence is 81% until we confirm no quota conflict.",
     controls: [{ framework: "CIS AWS", id: "2.1.1", name: "GuardDuty enabled" }],
     cluster: true,
-    affectedTenants: [{ id: "piedpiper", name: "Pied Piper Cloud", initials: "PP" }],
   },
   {
     id: "esc-s3",
@@ -325,11 +335,10 @@ export const mspQueueItems = [
     priority: "Critical",
     score: 95,
     reason: ESCALATION_REASONS.blast,
-    breachAt: now + 125 * 60 * 1000,
+    breachAt: now - 48 * 60 * 1000,
     confidence: 90,
     reversible: true,
-    tenantCount: 14,
-    tenantNames: ["Helios Payments", "Lumen Studios", "Northwind Logistics"],
+    ...blastRadius(["helios", "lumen"], 14),
     category: "Databases",
     fixSummary: "Enable versioning and apply a 30-day MFA-delete hold",
     owner: null,
@@ -342,27 +351,20 @@ export const mspQueueItems = [
       { framework: "ISO 27001", id: "A.12.3.1", name: "Information backup" },
     ],
     cluster: true,
-    affectedTenants: [
-      { id: "helios", name: "Helios Payments", initials: "HP" },
-      { id: "lumen", name: "Lumen Studios", initials: "LS" },
-      { id: "stark", name: "Stark Industrial", initials: "SI" },
-      { id: "northwind", name: "Northwind Logistics", initials: "NW" },
-    ],
   },
   {
     id: "esc-eks-logging",
     issue: "EKS control plane logging disabled",
-    priority: "High",
-    score: 86,
+    priority: "Critical",
+    score: 95,
     reason: ESCALATION_REASONS.blast,
-    breachAt: now + 150 * 60 * 1000,
+    breachAt: now + (1 * 60 + 48) * 60 * 1000,
     confidence: 91,
     reversible: true,
-    tenantCount: 7,
-    tenantNames: ["Stark Industrial", "Globex Manufacturing", "Northwind Logistics"],
+    ...blastRadius(["lumen", "helios"], 8),
     category: "Containers",
-    fixSummary: "Enable API, audit, authenticator, controllerManager, and scheduler logs to CloudWatch",
-    owner: { initials: "AL", name: "Amelia Lewis" },
+    fixSummary: "Enable api, audit and authenticator logs",
+    owner: null,
     rollbackPlan: "Disable the five log types if CloudWatch ingest cost spikes; retain 24h of already shipped logs.",
     rationale: "Seven AWS estates share the same EKS module. Auto-apply is blocked above 5 tenants even though the Terraform change is identical.",
     controls: [
@@ -371,31 +373,20 @@ export const mspQueueItems = [
       { framework: "ISO 27001", id: "A.12.4.1", name: "Event logging" },
     ],
     cluster: true,
-    affectedTenants: [
-      { id: "stark", name: "Stark Industrial", initials: "SI" },
-      { id: "globex", name: "Globex Manufacturing", initials: "GX" },
-      { id: "acme", name: "Industrial Illusions", initials: "II" },
-      { id: "helios", name: "Helios Payments", initials: "HP" },
-      { id: "northwind", name: "Northwind Logistics", initials: "NW" },
-      { id: "contoso", name: "Contoso Logistics", initials: "CL" },
-      { id: "atlas", name: "Atlas Freight", initials: "AF" },
-      { id: "apex", name: "Apex Media", initials: "AM" },
-    ],
   },
   {
     id: "esc-ami",
-    issue: "Node group AMI stale",
+    issue: "Node group AMI 47 days stale",
     priority: "High",
     score: 82,
-    reason: ESCALATION_REASONS.confidence,
-    breachAt: now + 210 * 60 * 1000,
-    confidence: 88,
-    reversible: false,
-    tenantCount: 8,
-    tenantNames: ["Globex Manufacturing", "Stark Industrial", "Northwind Logistics"],
+    reason: ESCALATION_REASONS.rollback,
+    breachAt: now + (3 * 60 + 5) * 60 * 1000,
+    confidence: 84,
+    reversible: true,
+    ...blastRadius(["northwind", "initech"], 11),
     category: "Containers",
-    fixSummary: "Roll a canary node group onto the current EKS-optimized AMI, then drain the rest",
-    owner: null,
+    fixSummary: "Rolling replace of 2 node groups per tenant",
+    owner: { initials: "DK", name: "Daniel King" },
     rollbackPlan: "Node replacement is not in-place reversible. Keep the previous launch template version pinned for 2 hours.",
     rationale: "AMI IDs differ by region and Kubernetes minor. Confidence is 88%, under the 90% auto-apply threshold, and the change is irreversible.",
     controls: [
@@ -404,16 +395,6 @@ export const mspQueueItems = [
       { framework: "SOC 2", id: "CC8.1", name: "Change management" },
     ],
     cluster: true,
-    affectedTenants: [
-      { id: "globex", name: "Globex Manufacturing", initials: "GX" },
-      { id: "stark", name: "Stark Industrial", initials: "SI" },
-      { id: "northwind", name: "Northwind Logistics", initials: "NW" },
-      { id: "acme", name: "Industrial Illusions", initials: "II" },
-      { id: "lumen", name: "Lumen Studios", initials: "LS" },
-      { id: "initech", name: "Initech SaaS", initials: "IN" },
-      { id: "helios", name: "Helios Payments", initials: "HP" },
-      { id: "contoso", name: "Contoso Logistics", initials: "CL" },
-    ],
     introducedBy: {
       actor: "Daniel King",
       handle: "d.king",
@@ -437,11 +418,11 @@ export const mspPmNotes = [
   {
     id: 2,
     target: "queue-card",
-    title: "Confidence and reversibility on every card",
-    decision: "Every escalation shows AI confidence and whether the change can be undone.",
-    alternatives: "Only show those fields inside the review drawer.",
-    tradeoff: "More visual density vs. calibrated trust before opening a diff.",
-    metric: "Median approval time",
+    title: "Dense rows in the workspace, cards on Overview",
+    decision: "A dense row list in the workspace and cards on the Overview.",
+    alternatives: "The same cards everywhere; a table with no card fallback.",
+    tradeoff: "Two layouts to maintain in exchange for density where people triage in volume and readability where they glance.",
+    metric: "Time-to-acknowledge, items reviewed per session",
   },
   {
     id: 3,
@@ -456,7 +437,7 @@ export const mspPmNotes = [
     id: 4,
     target: "queue-bulk",
     title: "Bulk approve similar",
-    decision: "Select-multiple enables Approve all similar so HITL can scale.",
+    decision: "Select-multiple enables Approve all similar so human approval can scale.",
     alternatives: "Force one-by-one review for every cluster.",
     tradeoff: "Faster throughput vs. risk of rubber-stamping a mixed cluster.",
     metric: "Escalation handling time",
@@ -558,18 +539,19 @@ export const mspCaseStudy = {
   problem:
     "Identical control gaps fire once per tenant. Auto-remediation is fast but untrusted. Humans either rubber-stamp or re-investigate every cluster, so SLA breaches stack.",
   metrics: [
-    { label: "Time-to-remediate (HITL)", value: "Median 18 min after escalation" },
+    { label: "Time-to-remediate (human approval)", value: "Median 18 min after escalation" },
     { label: "Escalation rate", value: "5.8% of attempted fixes (57 / 1,508)" },
     { label: "% of AI fixes reverted", value: "2.1% (31 / 1,508)" },
     { label: "Hours saved (7d)", value: "2,840 at 20 min avg manual fix" },
     { label: "SLA met rate", value: "96.4% of 167 SLA-tracked issues (161 within target, 6 breaches)" },
-    { label: "Median time to remediate, AI vs. human-approved", value: "4 min auto-fixed · 2h 10m HITL" },
+    { label: "Median time to remediate, AI vs. human-approved", value: "4 min auto-fixed · 2h 10m human-approved" },
     { label: "Human override rate", value: "25% (3 of 12 fixes reviewed this week)" },
     { label: "% of fixes approved unchanged", value: "75% (9 of 12 reviewed)" },
   ],
   deferred: [
     { cut: "Global Resources tab", why: "Replaced by a Tenants tab with resources shown in tenant context." },
-    { cut: "Natural-language policy authoring", why: "Would steal focus from the HITL vs. auto-apply question this screen is built to argue." },
+    { cut: "Natural-language policy authoring", why: "Would steal focus from the human-approval vs. auto-apply question this screen is built to argue." },
+    { cut: "Saved views and column customization", why: "Deferred; the default ranking covers the primary triage flow." },
     { cut: "Customer-facing PDF attestations", why: "Downstream of trust. If rollback and confidence are not credible, PDFs will not be read." },
     { cut: "Resource-count deficit matrix", why: "Duplicated the queue and tenant views and wasn't tied to a decision." },
     { cut: "Compliance framework scoring", why: "Deferred; a GRC feature set that dilutes the focus on AI remediation." },
@@ -1152,11 +1134,41 @@ export function slaForTenant(tenantId) {
 
 export function slaRiskScore(item, nowTs = Date.now()) {
   const hours = Math.max(0.08, (item.breachAt - nowTs) / 3_600_000)
-  return (1 / hours) * item.tenantCount
+  return (1 / hours) * queueBlastCount(item)
 }
 
 export function rankMspQueue(items, nowTs = Date.now()) {
   return [...items].sort((a, b) => slaRiskScore(b, nowTs) - slaRiskScore(a, nowTs))
+}
+
+export function workspaceRankScore(item, nowTs = Date.now()) {
+  const n = queueBlastCount(item)
+  const hours = (item.breachAt - nowTs) / 3_600_000
+  if (hours <= 0) return 1_000_000 + Math.abs(hours) * n
+  return (1 / Math.max(0.08, hours)) * n
+}
+
+export function rankWorkspaceQueue(items, nowTs = Date.now()) {
+  return [...items].sort((a, b) => workspaceRankScore(b, nowTs) - workspaceRankScore(a, nowTs))
+}
+
+export function sortWorkspaceQueue(items, key, dir, nowTs = Date.now()) {
+  if (!key || key === "rank") return rankWorkspaceQueue(items, nowTs)
+  const sign = dir === "asc" ? 1 : -1
+  return [...items].sort((a, b) => {
+    if (key === "issue") return sign * a.issue.localeCompare(b.issue)
+    if (key === "blast") return sign * (queueBlastCount(a) - queueBlastCount(b))
+    if (key === "confidence") return sign * ((a.confidence ?? 0) - (b.confidence ?? 0))
+    if (key === "sla") {
+      const da = a.breachAt - nowTs
+      const db = b.breachAt - nowTs
+      const aBreached = da <= 0
+      const bBreached = db <= 0
+      if (aBreached !== bBreached) return aBreached ? -1 : 1
+      return sign * (da - db)
+    }
+    return 0
+  })
 }
 
 const HISTORY_EMPTY_TENANTS = new Set([

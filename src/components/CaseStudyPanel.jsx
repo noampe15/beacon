@@ -12,7 +12,7 @@ export default function CaseStudyPanel({ open, onToggle }) {
       >
         <span>
           <span className="block text-[16px] font-semibold text-slate-900">Case Study</span>
-          <span className="block text-[12px] text-slate-500">Why this HITL design exists</span>
+          <span className="block text-[12px] text-slate-500">Why this design exists</span>
         </span>
         {open ? <ChevronUp className="h-4 w-4 text-slate-500" /> : <ChevronDown className="h-4 w-4 text-slate-500" />}
       </button>

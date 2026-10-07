@@ -129,7 +129,7 @@ export default function ActionQueueRail({
             <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-600">
               <span>{tenant ? `${ranked.length} in scope` : `${ranked.length} of 78 in scope`}</span>
               {!tenant && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">HITL only (auto-apply blocked)</span>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-600">Needs human approval</span>
               )}
               {filterChips.map((chip) => (
                 <span key={chip} className="rounded-full bg-[#f3f1ff] px-2 py-0.5 font-medium text-[#5b4cf0]">

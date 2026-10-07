@@ -345,7 +345,14 @@ export default function App() {
         if (!inferred.startsWith(want.slice(0, 3).toLowerCase()) && !blob.includes(want)) return false
       }
       if (q) {
-        const hay = [item.issue, item.fixSummary, ...(item.tenantNames ?? [])].join(" ").toLowerCase()
+        const hay = [
+          item.issue,
+          item.fixSummary,
+          ...(item.tenantNames ?? []),
+          ...(item.affectedTenants ?? []).map((t) => t.name),
+        ]
+          .join(" ")
+          .toLowerCase()
         if (!hay.includes(q)) return false
       }
       if (queueAiStatus && item.aiStatus !== queueAiStatus) return false
@@ -435,7 +442,7 @@ export default function App() {
     },
     onDismiss: (item) => {
       patchItem(item.id, { dismissed: true })
-      flash("Dismissed from the HITL queue")
+      flash("Dismissed from the action queue")
     },
     onBulkApprove: (rows) => {
       rows.forEach((row) => patchItem(row.id, { dismissed: true }))

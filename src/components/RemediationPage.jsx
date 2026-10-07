@@ -1,4 +1,4 @@
-import ActionQueueRail from "./ActionQueueRail"
+import ActionQueueWorkspace from "./ActionQueueWorkspace"
 import RemediationHistory from "./RemediationHistory"
 import AnnotationPin from "./AnnotationPin"
 
@@ -20,6 +20,7 @@ function RemediationViewToggle({ view, onView }) {
             type="button"
             role="tab"
             aria-selected={active}
+            aria-current={active ? "page" : undefined}
             id={`remediation-tab-${tab.id}`}
             aria-controls={`remediation-panel-${tab.id}`}
             tabIndex={active ? 0 : -1}
@@ -88,7 +89,7 @@ export default function RemediationPage({
     <div>
       {view === "queue" ? (
         <div role="tabpanel" id="remediation-panel-queue" aria-labelledby="remediation-tab-queue">
-          <ActionQueueRail
+          <ActionQueueWorkspace
             items={queueItems}
             filterChips={filterChips}
             onClearFilters={onClearFilters}
