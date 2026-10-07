@@ -605,17 +605,20 @@ function resourcesFor(id, withIssues) {
 }
 
 function recentAi(id, { fixed, rolled, escalated }) {
-  const stamps = ["12 min ago", "3h ago", "Yesterday 16:40", "Yesterday 09:12", "2 days ago"]
+  const stamps = ["12 min ago", "3h ago", "Yesterday 16:40", "Yesterday 09:12", "2 days ago", "2 days ago", "3 days ago", "4 days ago"]
   const outcomes = []
   if (escalated) outcomes.push("Escalated")
   if (rolled) outcomes.push("Rolled back")
-  while (outcomes.length < 5) outcomes.push("Fixed")
+  while (outcomes.length < 8) outcomes.push("Fixed")
   const actions = [
     "Enabled backup retention",
     "Rotated access key",
     "Patched node AMI canary",
     "Closed public storage ACL",
     "Re-enabled detector",
+    "Tightened security group",
+    "Rotated expired certificate",
+    "Enabled encryption at rest",
   ]
   const h = hashId(id)
   return stamps.map((at, i) => ({
@@ -2095,6 +2098,30 @@ const NORTHWIND_OVERVIEW = {
       action: "history",
       historyId: "hist-nw-rejected-ami",
     },
+    {
+      id: "nw-act-4",
+      actorKind: "ai",
+      title: "RDS backup retention extended",
+      outcome: "Fixed",
+      confidence: 94,
+      description: "Raised automated backup retention to 35 days on nw-prod-postgres after the last restore drill.",
+      chips: ["Yesterday 16:40", "Auto-applied", "Reversible"],
+      actionLabel: "View change",
+      action: "history",
+      historyId: "hist-nw-rds-backup",
+    },
+    {
+      id: "nw-act-5",
+      actorKind: "ai",
+      title: "GuardDuty detector re-enabled",
+      outcome: "Fixed",
+      confidence: 97,
+      description: "Restored the organisation detector in eu-west-2 after it was paused during the account move.",
+      chips: ["Yesterday 09:12", "Auto-applied", "Reversible"],
+      actionLabel: "View change",
+      action: "history",
+      historyId: "hist-nw-guardduty",
+    },
   ],
   activityTotals: { fixed: 41, rolledBack: 2, escalated: 3, humanDecisions: 9 },
   autonomy: {
@@ -2230,8 +2257,9 @@ function derivedOverview(tenant) {
         { date: "Oct 6", minutes: 22 },
       ],
     },
-    activity: (tenant.recentAi ?? []).slice(0, 3).map((row) => ({
+    activity: (tenant.recentAi ?? []).slice(0, 5).map((row) => ({
       id: row.id,
+      actorKind: "ai",
       title: row.action,
       outcome: row.outcome,
       confidence: 90,

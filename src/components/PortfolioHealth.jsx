@@ -1,51 +1,98 @@
-import { useMemo } from "react"
-import { ShieldAlert, Shield, ShieldCheck } from "lucide-react"
+import { useMemo, useState } from "react"
 import { healthForRange, mspTenants } from "../mspDashboard"
 import AnnotationPin from "./AnnotationPin"
 import MetricDelta from "./MetricDelta"
+import TenantHoverList from "./TenantHoverList"
 
 const buckets = [
-  { key: "secure", label: "Secure", color: "#16a34a", tone: "text-emerald-800", bg: "bg-emerald-50", Icon: ShieldCheck },
-  { key: "warning", label: "SLA Warnings", color: "#ea580c", tone: "text-amber-800", bg: "bg-orange-50", Icon: Shield },
-  { key: "critical", label: "Critical Risk", color: "#e11d48", tone: "text-rose-800", bg: "bg-rose-50", Icon: ShieldAlert },
+  { key: "secure", label: "Secure", color: "#12B76A", tone: "text-emerald-800", bg: "bg-emerald-50" },
+  { key: "warning", label: "SLA Warnings", color: "#F79009", tone: "text-amber-800", bg: "bg-orange-50" },
+  { key: "critical", label: "Critical Risk", color: "#F04438", tone: "text-rose-800", bg: "bg-rose-50" },
 ]
 
-function Donut({ counts }) {
+function pctOf(value, total) {
+  if (!total) return 0
+  return Math.round((value / total) * 100)
+}
+
+function arcPath(cx, cy, r, start, end) {
+  const x1 = cx + r * Math.cos(start)
+  const y1 = cy + r * Math.sin(start)
+  const x2 = cx + r * Math.cos(end)
+  const y2 = cy + r * Math.sin(end)
+  const large = end - start > Math.PI ? 1 : 0
+  return `M ${x1.toFixed(3)} ${y1.toFixed(3)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(3)} ${y2.toFixed(3)}`
+}
+
+function slicesFromCounts(counts) {
   const total = Math.max(1, counts.secure + counts.warning + counts.critical)
-  const size = 128
-  const stroke = 16
-  const r = (size - stroke) / 2
-  const c = 2 * Math.PI * r
-  let offset = 0
-  const slices = buckets.map((bucket) => {
-    const value = counts[bucket.key]
-    const len = (value / total) * c
-    const slice = { ...bucket, value, dash: `${len} ${c - len}`, offset }
-    offset += len
-    return slice
+  const gap = 0.055
+  let cursor = -Math.PI / 2
+  return buckets.map((bucket) => {
+    const value = counts[bucket.key] ?? 0
+    const sweep = (value / total) * Math.PI * 2
+    const pad = sweep > gap * 3 ? gap : 0
+    const start = cursor + pad / 2
+    const end = cursor + sweep - pad / 2
+    cursor += sweep
+    return { ...bucket, value, pct: pctOf(value, total), start, end, sweep }
   })
+}
+
+function Donut({ counts, hoverKey, onHover, onOpenStatus }) {
+  const total = counts.secure + counts.warning + counts.critical
+  const size = 148
+  const stroke = 18
+  const cx = size / 2
+  const cy = size / 2
+  const r = (size - stroke) / 2 - 4
+  const slices = slicesFromCounts(counts)
+  const label = slices.map((s) => `${s.value} ${s.label} (${s.pct}%)`).join(", ")
 
   return (
-    <div className="relative mx-auto h-32 w-32">
-      <svg width={size} height={size} className="-rotate-90" role="img" aria-label={`${total} tenants in the managed estate`}>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e2e8f0" strokeWidth={stroke} />
-        {slices.map((slice) => (
-          <circle
-            key={slice.key}
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            fill="none"
-            stroke={slice.color}
-            strokeWidth={stroke}
-            strokeDasharray={slice.dash}
-            strokeDashoffset={-slice.offset}
-          />
-        ))}
+    <div className="relative mx-auto h-[148px] w-[148px] shrink-0">
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        role="img"
+        aria-label={`${total} tenants: ${label}`}
+        className="overflow-visible"
+      >
+        <defs>
+          <filter id="donut-soft" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodColor="#0f172a" floodOpacity="0.08" />
+          </filter>
+        </defs>
+        <circle cx={cx} cy={cy} r={r} fill="none" stroke="#EEF0F4" strokeWidth={stroke} />
+        <g filter="url(#donut-soft)">
+          {slices.map((slice) => {
+            if (slice.sweep <= 0.001) return null
+            const active = !hoverKey || hoverKey === slice.key
+            return (
+              <path
+                key={slice.key}
+                d={arcPath(cx, cy, r, slice.start, slice.end)}
+                fill="none"
+                stroke={slice.color}
+                strokeWidth={hoverKey === slice.key ? stroke + 3 : stroke}
+                strokeLinecap="butt"
+                className="cursor-pointer transition-[stroke-width] duration-150"
+                opacity={active ? 1 : 0.28}
+                onMouseEnter={() => onHover?.(slice.key)}
+                onMouseLeave={() => onHover?.(null)}
+                onClick={() => onOpenStatus?.(slice.key)}
+              >
+                <title>{`${slice.label}: ${slice.value} tenants, ${slice.pct}%`}</title>
+              </path>
+            )
+          })}
+        </g>
+        <circle cx={cx} cy={cy} r={r - stroke / 2 - 6} fill="#ffffff" />
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <p className="text-[22px] font-semibold leading-none text-slate-900">{total}</p>
-        <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">Tenants</p>
+      <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+        <p className="text-[26px] font-semibold leading-none tracking-tight text-slate-900">{total}</p>
+        <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Tenants</p>
       </div>
     </div>
   )
@@ -53,8 +100,8 @@ function Donut({ counts }) {
 
 export default function PortfolioHealth({ range, pmNotes, onOpenNote, onOpenStatus, onOpenTenant }) {
   const health = healthForRange(range)
-  const counts = health.counts
   const deltas = health.deltas
+  const [hoverKey, setHoverKey] = useState(null)
   const byHealth = useMemo(() => {
     const groups = { secure: [], warning: [], critical: [] }
     for (const tenant of mspTenants) {
@@ -65,6 +112,15 @@ export default function PortfolioHealth({ range, pmNotes, onOpenNote, onOpenStat
     }
     return groups
   }, [])
+  const counts = useMemo(
+    () => ({
+      secure: byHealth.secure.length,
+      warning: byHealth.warning.length,
+      critical: byHealth.critical.length,
+    }),
+    [byHealth],
+  )
+  const total = Math.max(1, counts.secure + counts.warning + counts.critical)
 
   return (
     <section
@@ -76,29 +132,37 @@ export default function PortfolioHealth({ range, pmNotes, onOpenNote, onOpenStat
         <h2 className="text-[16px] font-semibold text-slate-900">Portfolio health distribution</h2>
         <p className="mt-0.5 text-[12px] text-slate-500">Tenants aggregated by systemic exposure</p>
       </div>
-      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-start">
-        <Donut counts={counts} />
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+        <Donut counts={counts} hoverKey={hoverKey} onHover={setHoverKey} onOpenStatus={onOpenStatus} />
         <ul className="grid w-full flex-1 gap-2">
           {buckets.map((bucket) => {
             const tenants = byHealth[bucket.key] ?? []
-            const twoCol = tenants.length > 6
             const popupId = `health-tenants-${bucket.key}`
+            const value = counts[bucket.key]
+            const pct = pctOf(value, total)
+            const dimmed = hoverKey && hoverKey !== bucket.key
             return (
-              <li key={bucket.key} className="group relative z-0 hover:z-[90] focus-within:z-[90]">
+              <li
+                key={bucket.key}
+                className="group relative z-0 hover:z-[90] focus-within:z-[90]"
+                onMouseEnter={() => setHoverKey(bucket.key)}
+                onMouseLeave={() => setHoverKey(null)}
+              >
                 <button
                   type="button"
                   onClick={() => onOpenStatus?.(bucket.key)}
-                  aria-label={`Open Tenants filtered to ${bucket.label}`}
+                  aria-label={`Open Tenants filtered to ${bucket.label}, ${value} tenants, ${pct}%`}
                   aria-controls={popupId}
-                  className={`grid w-full grid-cols-[minmax(0,1fr)_2.75rem_minmax(7.5rem,1fr)] items-center gap-x-2 rounded-xl px-3 py-2.5 text-left outline-none hover:brightness-[0.98] focus-visible:ring-2 focus-visible:ring-[#6d5cff] ${bucket.bg}`}
+                  className={`grid w-full grid-cols-[minmax(0,1fr)_auto_2.5rem_minmax(7rem,1fr)] items-center gap-x-2 rounded-xl px-3 py-2.5 text-left outline-none transition-opacity hover:brightness-[0.98] focus-visible:ring-2 focus-visible:ring-[#6d5cff] ${bucket.bg} ${dimmed ? "opacity-45" : "opacity-100"}`}
                 >
                   <span className="inline-flex min-w-0 items-center gap-2 text-[13px] font-medium text-slate-700">
-                    <bucket.Icon className="h-3.5 w-3.5 shrink-0" style={{ color: bucket.color }} aria-hidden="true" />
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: bucket.color }} aria-hidden="true" />
                     <span className="truncate">{bucket.label}</span>
                   </span>
                   <span className={`text-right text-[18px] font-semibold leading-none tabular-nums ${bucket.tone}`}>
-                    {counts[bucket.key]}
+                    {value}
                   </span>
+                  <span className="text-right text-[12px] font-semibold tabular-nums text-slate-500">{pct}%</span>
                   <span className="min-w-0 justify-self-end">
                     {deltas[bucket.key] !== 0 ? (
                       <MetricDelta pts={deltas[bucket.key]} label={health.priorLabel} />
@@ -113,34 +177,7 @@ export default function PortfolioHealth({ range, pmNotes, onOpenNote, onOpenStat
                   aria-label={`${bucket.label} tenants`}
                   className="pointer-events-none invisible absolute left-0 right-0 top-full z-[80] pt-1 opacity-0 group-hover:pointer-events-auto group-hover:visible group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:visible group-focus-within:opacity-100"
                 >
-                  <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
-                    <p className="text-[11px] font-semibold tracking-wide text-slate-400">
-                      {tenants.length} {tenants.length === 1 ? "tenant" : "tenants"} · {bucket.label}
-                    </p>
-                    <ul className={`mt-2 max-h-56 overflow-auto ${twoCol ? "grid grid-cols-2 gap-x-3 gap-y-1.5" : "space-y-1"}`}>
-                      {tenants.map((tenant) => (
-                        <li key={tenant.id}>
-                          <button
-                            type="button"
-                            onClick={() => onOpenTenant?.(tenant.id)}
-                            aria-label={`Open ${tenant.name} summary`}
-                            className="flex w-full items-center gap-2 rounded-lg px-1 py-1 text-left outline-none hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#6d5cff]"
-                          >
-                            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f3f1ff] text-[8px] font-semibold text-[#6d5cff]">
-                              {tenant.initials}
-                            </span>
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate text-[12.5px] font-medium text-[#4c3fd4]">{tenant.name}</span>
-                              <span className="block truncate text-[11px] text-slate-400">
-                                {tenant.industry}
-                                {tenant.openIssues?.length ? ` · ${tenant.openIssues.length} open` : ""}
-                              </span>
-                            </span>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+                  <TenantHoverList tenants={tenants} label={bucket.label} onOpenTenant={onOpenTenant} />
                 </div>
               </li>
             )

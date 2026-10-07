@@ -27,7 +27,6 @@ export default function TenantOverview({
           <LatestAiActivity
             totals={overview.activityTotals}
             entries={overview.activity}
-            periodChip={overview.chipLabel}
             onHistory={onHistory}
             onAction={onActivityAction}
           />
@@ -43,7 +42,6 @@ export default function TenantOverview({
             onViewAll={onViewAll}
             pmNotes={false}
             onOpenNote={onOpenNote}
-            totalCount={overview.queue.length}
             {...queueHandlers}
           />
         </div>

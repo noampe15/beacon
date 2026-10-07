@@ -2,9 +2,9 @@ import { useState } from "react"
 import { QUEUE_AI_STATUSES } from "../mspDashboard"
 
 const SEGMENTS = [
-  { key: "AI fixing", fill: "#8b7dff", legend: "bg-[#8b7dff]" },
-  { key: "Waiting on human", fill: "#f3d19e", legend: "bg-[#f3d19e]" },
-  { key: "Blocked", fill: "#334155", legend: "bg-slate-700" },
+  { key: "AI fixing", fill: "#6d5cff", legend: "bg-[#6d5cff]" },
+  { key: "Waiting on human", fill: "#F79009", legend: "bg-[#F79009]" },
+  { key: "Blocked", fill: "#94A3B8", legend: "bg-slate-400" },
 ]
 
 export default function StackedBarChart({ buckets, onSegmentClick }) {
@@ -20,30 +20,30 @@ export default function StackedBarChart({ buckets, onSegmentClick }) {
       <ul className="mb-3 flex flex-wrap gap-3 text-[12px] text-slate-600">
         {SEGMENTS.map((seg) => (
           <li key={seg.key} className="inline-flex items-center gap-1.5">
-            <span className={`h-2.5 w-2.5 rounded-sm ${seg.legend}`} aria-hidden="true" />
+            <span className={`h-2.5 w-2.5 rounded-full ${seg.legend}`} aria-hidden="true" />
             {seg.key}
           </li>
         ))}
       </ul>
       <div className="relative flex min-h-[180px] flex-1">
-        <div className="flex w-6 flex-col-reverse justify-between pr-1 text-[10px] text-slate-500" aria-hidden="true">
+        <div className="flex w-6 flex-col-reverse justify-between pr-1 text-[10px] tabular-nums text-slate-400" aria-hidden="true">
           {ticks.map((t) => (
             <span key={t}>{t}</span>
           ))}
         </div>
         <div className="relative min-w-0 flex-1">
-          <div className="pointer-events-none absolute inset-0 flex flex-col-reverse justify-between" aria-hidden="true">
+          <div className="pointer-events-none absolute inset-0 flex flex-col-reverse justify-between pb-6 pt-5" aria-hidden="true">
             {ticks.map((t) => (
-              <div key={t} className="border-t border-slate-100" />
+              <div key={t} className="border-t border-[#EEF0F6]" />
             ))}
           </div>
           <div className="relative flex h-full items-end justify-around gap-3 px-2 pb-6 pt-5">
             {buckets.map((bucket) => {
               const total = QUEUE_AI_STATUSES.reduce((sum, k) => sum + (bucket[k] ?? 0), 0)
               return (
-                <div key={bucket.label} className="flex h-full w-full max-w-[72px] flex-col items-center justify-end">
-                  <span className="mb-1 text-[11px] font-semibold text-slate-700">{total}</span>
-                  <div className="flex h-full w-10 flex-col-reverse overflow-hidden rounded-t-md bg-slate-100">
+                <div key={bucket.label} className="flex h-full w-full max-w-[80px] flex-col items-center justify-end">
+                  <span className="mb-1.5 text-[11px] font-semibold tabular-nums text-slate-700">{total}</span>
+                  <div className="flex h-full w-11 flex-col-reverse gap-[3px]">
                     {SEGMENTS.map((seg) => {
                       const n = bucket[seg.key] ?? 0
                       if (!n) return null
@@ -59,20 +59,27 @@ export default function StackedBarChart({ buckets, onSegmentClick }) {
                           onFocus={() => setHover({ label: bucket.label, status: seg.key, n })}
                           onBlur={() => setHover(null)}
                           onClick={() => onSegmentClick?.({ age: bucket.label, status: seg.key })}
-                          className="w-full outline-none focus-visible:ring-2 focus-visible:ring-[#6d5cff] focus-visible:ring-offset-1"
-                          style={{ height: `${pct}%`, background: seg.fill, opacity: active ? 0.85 : 1 }}
+                          className="w-full rounded-lg outline-none transition-[filter,transform] duration-150 focus-visible:ring-2 focus-visible:ring-[#6d5cff] focus-visible:ring-offset-1"
+                          style={{
+                            height: `${pct}%`,
+                            minHeight: n ? 8 : 0,
+                            background: seg.fill,
+                            filter: active ? "brightness(1.08)" : undefined,
+                            boxShadow: active ? "0 4px 12px rgba(109,92,255,0.18)" : "none",
+                          }}
                         />
                       )
                     })}
                   </div>
-                  <span className="mt-1 text-center text-[11px] text-slate-600">{bucket.label}</span>
+                  <span className="mt-1.5 text-center text-[11px] leading-tight text-slate-500">{bucket.label}</span>
                 </div>
               )
             })}
           </div>
           {hover && (
-            <div className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] text-slate-700 shadow">
-              <span className="font-semibold text-slate-900">{hover.n}</span> {hover.status} · {hover.label}
+            <div className="pointer-events-none absolute left-1/2 top-1 z-10 -translate-x-1/2 rounded-xl border border-[#ece8ff] bg-white/95 px-2.5 py-1.5 text-[11px] text-slate-600 shadow-[0_8px_24px_rgba(109,92,255,0.12)] backdrop-blur-sm">
+              <span className="font-semibold text-slate-900">{hover.n}</span> {hover.status}
+              <span className="mt-0.5 block text-slate-500">{hover.label}</span>
             </div>
           )}
         </div>

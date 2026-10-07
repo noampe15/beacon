@@ -8,7 +8,7 @@ const ACTOR_FILTERS = [
   { id: "human", label: "Human" },
 ]
 
-export default function LatestAiActivity({ totals, entries, periodChip = "last 7 days", onHistory, onAction }) {
+export default function LatestAiActivity({ totals, entries, onHistory, onAction }) {
   const [actor, setActor] = useState("all")
 
   const visible = useMemo(() => {
@@ -18,7 +18,7 @@ export default function LatestAiActivity({ totals, entries, periodChip = "last 7
         : actor === "human"
           ? entries.filter((row) => row.actorKind === "human")
           : entries
-    return [...filtered].slice(0, 3)
+    return [...filtered].slice(0, 5)
   }, [actor, entries])
 
   function onActorKey(e, index) {
@@ -77,9 +77,8 @@ export default function LatestAiActivity({ totals, entries, periodChip = "last 7
         <span className="inline-flex items-center gap-1 rounded-full bg-[#f3f1ff] px-2 py-0.5 text-[11px] font-medium text-[#5b4cf0]">
           <Users className="h-3 w-3" aria-hidden="true" /> {totals.humanDecisions ?? 0} human decisions
         </span>
-        <span className="inline-flex rounded-full bg-[#f3f1ff] px-2 py-0.5 text-[11px] font-medium text-[#5b4cf0]">{periodChip}</span>
       </div>
-      <div className="mt-3 flex min-h-0 flex-1 flex-col justify-between">
+      <div className="mt-3 flex min-h-0 flex-1 flex-col overflow-visible">
         {visible.length === 0 ? (
           <p className="flex flex-1 items-center justify-center text-[13px] text-slate-600">No activity in this period</p>
         ) : (

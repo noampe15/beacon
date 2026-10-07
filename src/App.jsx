@@ -564,10 +564,10 @@ export default function App() {
             ? (rosterTenantId ? "Summary" : "Tenants")
             : "Resources"
   const breadcrumb = !isGlobal
-    ? ["Multi-tenant", "Tenants", scopeName]
+    ? ["Tenants", scopeName]
     : page === "tenants" && rosterTenantId
       ? [GLOBAL_MSP.name, "Tenants", rosterName, "Summary"]
-      : [scopeName, pageTitle]
+      : [scopeName]
 
   function onSetPage(id) {
     setPage(id)
@@ -630,11 +630,6 @@ export default function App() {
             isGlobal
               ? undefined
               : `Ask about ${scopeName}, e.g. Why are 4 fixes waiting on a human?`
-          }
-          suggestions={
-            !isGlobal && page === "overview"
-              ? ["Summarize this week", "What changed since Monday?"]
-              : []
           }
           onClear={() => {
             setCopilotQuery("")
@@ -776,6 +771,11 @@ export default function App() {
             onViewRollback={(row) => {
               setReviewing(null)
               setRollbackEntry(row)
+            }}
+            onOpenTenant={(id) => {
+              setTenantsStatusFilter("all")
+              setPage("tenants")
+              setRosterTenantId(id)
             }}
             {...queueHandlers}
           />

@@ -77,6 +77,7 @@ export default function RemediationPage({
   queueAge,
   onQueueAiStatus,
   onQueueAge,
+  onOpenTenant,
 }) {
   const toggle = (
     <div className="relative">
@@ -110,6 +111,7 @@ export default function RemediationPage({
             queueAge={queueAge}
             onQueueAiStatus={onQueueAiStatus}
             onQueueAge={onQueueAge}
+            onOpenTenant={onOpenTenant}
             headerAction={toggle}
           />
         </div>

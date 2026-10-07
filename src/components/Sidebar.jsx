@@ -17,7 +17,7 @@ import { envRiskSeverity } from "../data"
 const STORAGE_KEY = "beacon-sidebar-collapsed"
 
 function defaultCollapsed() {
-  if (typeof window === "undefined") return false
+  if (typeof window === "undefined") return true
   try {
     const stored = sessionStorage.getItem(STORAGE_KEY)
     if (stored === "1") return true
@@ -25,7 +25,7 @@ function defaultCollapsed() {
   } catch {
     /* ignore */
   }
-  return !window.matchMedia("(min-width: 1024px)").matches
+  return true
 }
 
 function Tip({ label, collapsed, children }) {

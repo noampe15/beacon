@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { AlertTriangle, ArrowDown, ArrowUp, MoreVertical, Search, Timer, Undo2 } from "lucide-react"
 import QueueCard, { QueueCardSkeleton } from "./QueueCard"
 import InfoTooltip from "./InfoTooltip"
 import AnnotationPin from "./AnnotationPin"
 import AssignMenu from "./AssignMenu"
 import FilterMenu from "./FilterMenu"
+import TenantHoverList from "./TenantHoverList"
 import { SeverityBadge } from "./Badges"
 import {
   QUEUE_AGE_BUCKETS,
   QUEUE_AI_STATUSES,
+  mspTenants,
   queueBlastCount,
   slaDeadlineStatus,
   sortWorkspaceQueue,
@@ -79,48 +82,62 @@ function SortHeader({ col, sort, onSort }) {
   )
 }
 
-function BlastCell({ item }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef(null)
-  const tenants = item.affectedTenants?.length
+function enrichQueueTenants(item) {
+  const raw = item.affectedTenants?.length
     ? item.affectedTenants
     : (item.tenantNames ?? []).map((name, i) => ({ id: `${item.id}-${i}`, name, initials: name.slice(0, 2).toUpperCase() }))
-  const count = queueBlastCount(item)
+  return raw.map((t) => {
+    const full = mspTenants.find((row) => row.id === t.id || row.name === t.name)
+    return full ? { ...t, ...full } : t
+  })
+}
+
+function BlastCell({ item, onOpenTenant }) {
+  const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState(null)
+  const ref = useRef(null)
+  const hideTimer = useRef(null)
+  const popupId = `blast-tenants-${item.id}`
+  const tenants = enrichQueueTenants(item)
+  const count = tenants.length || queueBlastCount(item)
   const extra = Math.max(0, count - 2)
   const preview = tenants.slice(0, 2).map((t) => t.name).join(", ")
 
-  useEffect(() => {
-    if (!open) return
-    function onDoc(e) {
-      if (!ref.current?.contains(e.target)) setOpen(false)
-    }
-    function onKey(e) {
-      if (e.key === "Escape") setOpen(false)
-    }
-    document.addEventListener("mousedown", onDoc)
-    document.addEventListener("keydown", onKey)
-    return () => {
-      document.removeEventListener("mousedown", onDoc)
-      document.removeEventListener("keydown", onKey)
-    }
-  }, [open])
+  function place() {
+    const el = ref.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const width = 352
+    const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 12)
+    setPos({ top: rect.bottom, left, width })
+  }
+
+  function show() {
+    window.clearTimeout(hideTimer.current)
+    place()
+    setOpen(true)
+  }
+
+  function hide() {
+    hideTimer.current = window.setTimeout(() => setOpen(false), 80)
+  }
+
+  useEffect(() => () => window.clearTimeout(hideTimer.current), [])
 
   return (
-    <div className="relative min-w-0" ref={ref}>
+    <div className="relative z-0 min-w-0 hover:z-[90] focus-within:z-[90]" ref={ref}>
       <button
         type="button"
         className="w-full min-w-0 rounded-md text-left outline-none hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#6d5cff]"
         aria-expanded={open}
+        aria-controls={popupId}
         aria-label={`${count} ${count === 1 ? "tenant" : "tenants"}. Show full list.`}
-        onClick={(e) => {
-          e.stopPropagation()
-          setOpen((v) => !v)
-        }}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        onFocus={() => setOpen(true)}
+        onClick={(e) => e.stopPropagation()}
+        onMouseEnter={show}
+        onMouseLeave={hide}
+        onFocus={show}
         onBlur={(e) => {
-          if (!ref.current?.contains(e.relatedTarget)) setOpen(false)
+          if (!e.relatedTarget || !document.getElementById(popupId)?.contains(e.relatedTarget)) hide()
         }}
       >
         <p className="text-[13px] font-bold text-slate-900">
@@ -131,25 +148,23 @@ function BlastCell({ item }) {
           {extra > 0 ? ` +${extra} more` : ""}
         </p>
       </button>
-      {open && (
-        <div
-          role="dialog"
-          aria-label="Affected tenants"
-          className="absolute left-0 z-40 mt-1 max-h-64 w-64 overflow-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <p className="px-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            {count} tenants
-          </p>
-          <ul className="space-y-0.5">
-            {tenants.map((t) => (
-              <li key={t.id ?? t.name} className="rounded px-1 py-0.5 text-[12.5px] text-slate-700">
-                {t.name}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {open &&
+        pos &&
+        createPortal(
+          <div
+            id={popupId}
+            role="region"
+            aria-label="Blast radius tenants"
+            style={{ top: pos.top, left: pos.left, width: pos.width }}
+            className="fixed z-[80] pt-1"
+            onMouseEnter={show}
+            onMouseLeave={hide}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <TenantHoverList tenants={tenants} label="Blast radius" onOpenTenant={onOpenTenant} />
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }
@@ -176,8 +191,11 @@ function ConfidenceCell({ item }) {
     <div className="min-w-0">
       <div className="flex items-center gap-2">
         <span className="text-[13px] font-bold text-slate-900">{item.confidence}%</span>
-        <span className="relative h-1.5 w-[54px] overflow-hidden rounded-full bg-slate-200" aria-hidden="true">
-          <span className="absolute inset-y-0 left-0 rounded-full bg-[#6d5cff]" style={{ width: `${item.confidence}%` }} />
+        <span className="relative h-1.5 w-[54px] overflow-hidden rounded-full bg-[#EEF0F6]" aria-hidden="true">
+          <span
+            className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#A99BFF] to-[#6d5cff]"
+            style={{ width: `${item.confidence}%` }}
+          />
         </span>
       </div>
       <span
@@ -309,6 +327,7 @@ export default function ActionQueueWorkspace({
   onQueueAiStatus,
   onQueueAge,
   headerAction = null,
+  onOpenTenant,
 }) {
   const wide = useWide(1100)
   const [now, setNow] = useState(Date.now())
@@ -516,7 +535,7 @@ export default function ActionQueueWorkspace({
                       )}
                     </div>
                     <div role="cell" className="min-w-0">
-                      <BlastCell item={item} />
+                      <BlastCell item={item} onOpenTenant={onOpenTenant} />
                     </div>
                     <div role="cell" className="min-w-0">
                       <SlaCell breachAt={item.breachAt} now={now} />

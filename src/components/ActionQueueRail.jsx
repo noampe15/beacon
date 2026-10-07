@@ -70,11 +70,11 @@ export default function ActionQueueRail({
 
   const selectedItems = ranked.filter((row) => checked.has(row.id))
   const tenant = scope === "tenant"
-  const shownOf = totalCount ?? ranked.length
-  const showing = compact ? Math.min(3, ranked.length) : ranked.length
-  const title = "Action queue"
+  const showingCount = visible.length
+  const totalItems = ranked.length
+  const title = compact ? "Latest action queue" : "Action queue"
   const subtitle = tenant
-    ? `Ranked by SLA risk × blast radius · showing ${showing} of ${shownOf}`
+    ? "Ranked by SLA risk × blast radius"
     : "Requires human-in-the-loop approval"
 
   return (
@@ -88,6 +88,11 @@ export default function ActionQueueRail({
           <div>
             <h2 className="text-[16px] font-semibold text-slate-900">{title}</h2>
             <p className="mt-0.5 text-[12px] text-slate-600">{subtitle}</p>
+            {compact ? (
+              <p className="mt-0.5 text-[12px] tabular-nums text-slate-600">
+                Showing {showingCount} of {totalItems}
+              </p>
+            ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-2 pt-0.5">
             {headerAction}
@@ -95,10 +100,10 @@ export default function ActionQueueRail({
               <button
                 type="button"
                 onClick={onViewAll}
-                aria-label="View all in Remediation"
+                aria-label="Remediation"
                 className="text-[13px] font-semibold text-[#6d5cff] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[#6d5cff]"
               >
-                {tenant ? "View all in Remediation →" : "View all"}
+                Remediation →
               </button>
             )}
           </div>

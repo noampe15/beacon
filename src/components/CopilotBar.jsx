@@ -10,7 +10,6 @@ export default function CopilotBar({
   lastQuery,
   global = false,
   placeholder,
-  suggestions = [],
 }) {
   const [value, setValue] = useState("")
   const name = "AI Assistant"
@@ -40,7 +39,7 @@ export default function CopilotBar({
             onChange={(e) => setValue(e.target.value)}
             placeholder={
               placeholder ??
-              "AI Assistant — ask in plain English, e.g. produce posture report"
+              "AI Assistant — ask in plain English, e.g. Produce posture report"
             }
             className="h-9 min-w-0 flex-1 bg-transparent text-[14px] text-slate-800 outline-none placeholder:text-slate-400"
             aria-label={`${name} search`}
@@ -65,20 +64,6 @@ export default function CopilotBar({
             Hunt
           </button>
         </div>
-        {suggestions.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5 pl-11">
-            {suggestions.map((chip) => (
-              <button
-                key={chip}
-                type="button"
-                onClick={() => submit(chip)}
-                className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[12px] font-medium text-slate-700 outline-none hover:border-[#6d5cff]/40 hover:bg-[#f3f1ff] focus-visible:ring-2 focus-visible:ring-[#6d5cff]"
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-        )}
       </form>
 
       {hunting && (
