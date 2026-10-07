@@ -134,7 +134,7 @@ export default function PortfolioHealth({ range, pmNotes, onOpenNote, onOpenStat
       </div>
       <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
         <Donut counts={counts} hoverKey={hoverKey} onHover={setHoverKey} onOpenStatus={onOpenStatus} />
-        <ul className="grid w-full flex-1 gap-2">
+        <ul className="grid w-full flex-1 grid-cols-[minmax(0,1fr)_2.25rem_2.5rem_max-content] gap-x-3 gap-y-2">
           {buckets.map((bucket) => {
             const tenants = byHealth[bucket.key] ?? []
             const popupId = `health-tenants-${bucket.key}`
@@ -144,7 +144,7 @@ export default function PortfolioHealth({ range, pmNotes, onOpenNote, onOpenStat
             return (
               <li
                 key={bucket.key}
-                className="group relative z-0 hover:z-[90] focus-within:z-[90]"
+                className="col-span-4 grid grid-cols-subgrid group relative z-0 hover:z-[90] focus-within:z-[90]"
                 onMouseEnter={() => setHoverKey(bucket.key)}
                 onMouseLeave={() => setHoverKey(null)}
               >
@@ -153,17 +153,17 @@ export default function PortfolioHealth({ range, pmNotes, onOpenNote, onOpenStat
                   onClick={() => onOpenStatus?.(bucket.key)}
                   aria-label={`Open Tenants filtered to ${bucket.label}, ${value} tenants, ${pct}%`}
                   aria-controls={popupId}
-                  className={`grid w-full grid-cols-[minmax(0,1fr)_auto_2.5rem_minmax(7rem,1fr)] items-center gap-x-2 rounded-xl px-3 py-2.5 text-left outline-none transition-opacity hover:brightness-[0.98] focus-visible:ring-2 focus-visible:ring-[#6d5cff] ${bucket.bg} ${dimmed ? "opacity-45" : "opacity-100"}`}
+                  className={`col-span-4 grid grid-cols-subgrid items-center rounded-xl py-2.5 pl-3 pr-3 text-left outline-none transition-opacity hover:brightness-[0.98] focus-visible:ring-2 focus-visible:ring-[#6d5cff] ${bucket.bg} ${dimmed ? "opacity-45" : "opacity-100"}`}
                 >
                   <span className="inline-flex min-w-0 items-center gap-2 text-[13px] font-medium text-slate-700">
                     <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: bucket.color }} aria-hidden="true" />
                     <span className="truncate">{bucket.label}</span>
                   </span>
-                  <span className={`text-right text-[18px] font-semibold leading-none tabular-nums ${bucket.tone}`}>
+                  <span className={`w-full whitespace-nowrap text-right text-[18px] font-semibold leading-none tabular-nums ${bucket.tone}`}>
                     {value}
                   </span>
-                  <span className="text-right text-[12px] font-semibold tabular-nums text-slate-500">{pct}%</span>
-                  <span className="min-w-0 justify-self-end">
+                  <span className="w-full whitespace-nowrap text-right text-[12px] font-semibold tabular-nums text-slate-500">{pct}%</span>
+                  <span className="justify-self-end whitespace-nowrap">
                     {deltas[bucket.key] !== 0 ? (
                       <MetricDelta pts={deltas[bucket.key]} label={health.priorLabel} />
                     ) : (
