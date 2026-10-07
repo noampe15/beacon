@@ -43,7 +43,8 @@ export default function QueueCard({
   const menuRef = useRef(null)
   const remain = item.breachAt - now
   const extra = Math.max(0, (item.tenantCount ?? 0) - (item.tenantNames ?? []).length)
-  const dense = compact && scope !== "tenant"
+  const reasonChip = Boolean(item.reason && (scope === "tenant" || compact))
+  const aiStatus = item.aiStatus ?? (scope === "tenant" ? null : "Waiting on human")
 
   useEffect(() => {
     if (!menu) return
@@ -65,11 +66,11 @@ export default function QueueCard({
 
   return (
     <li
-      className={`w-full rounded-xl border transition hover:border-slate-300 ${
-        dense ? "flex h-full min-h-0 flex-col p-2.5" : "p-3"
-      } ${selected ? "border-[#6d5cff]/40 bg-[#f7f6ff]" : "border-slate-200 bg-white"}`}
+      className={`w-full rounded-xl border p-3 transition hover:border-slate-300 ${
+        selected ? "border-[#6d5cff]/40 bg-[#f7f6ff]" : "border-slate-200 bg-white"
+      }`}
     >
-      <div className={`flex min-w-0 ${dense ? "h-full min-h-0 flex-1 flex-col" : "items-start gap-2"}`}>
+      <div className="flex min-w-0 items-start gap-2">
         {bulkMode && (
           <input
             type="checkbox"
@@ -79,9 +80,9 @@ export default function QueueCard({
             aria-label={`Select ${item.issue}`}
           />
         )}
-        <div className={`min-w-0 flex-1 ${dense ? "flex min-h-0 flex-1 flex-col" : ""}`}>
+        <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <p className={`min-w-0 font-semibold text-slate-900 ${dense ? "truncate text-[13px] leading-tight" : "text-[13.5px] leading-snug"}`}>
+            <p className="min-w-0 text-[13.5px] font-semibold leading-snug text-slate-900">
               {item.issue}
             </p>
             <span className="shrink-0">
@@ -92,23 +93,28 @@ export default function QueueCard({
               />
             </span>
           </div>
-          {scope !== "tenant" && (
-            <p className={`text-[11px] font-medium text-[#5b4cf0] ${dense ? "mt-0.5 truncate" : "mt-2"}`}>
-              {dense ? item.reason : `AI Escalation Reason · ${item.reason}`}
+          {scope !== "tenant" && !compact && item.reason && (
+            <p className="mt-2 text-[11px] font-medium text-[#5b4cf0]">
+              AI Escalation Reason · {item.reason}
             </p>
           )}
-          <div className={`flex flex-wrap gap-1 ${dense ? "mt-1" : "mt-2 gap-1.5"}`}>
+          <div className="mt-2 flex flex-wrap gap-1.5">
             <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] font-semibold ${slaTone(remain)}`}>
               {formatCountdown(remain)}
             </span>
-            {!dense && item.aiStatus && (
-              <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${AI_STATUS_TONE[item.aiStatus] ?? "bg-slate-100 text-slate-700"}`}>
-                {item.aiStatus}
+            {aiStatus && (
+              <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${AI_STATUS_TONE[aiStatus] ?? "bg-slate-100 text-slate-700"}`}>
+                {aiStatus}
               </span>
             )}
-            {scope === "tenant" && item.reason && (
+            {reasonChip && (
               <span className="inline-flex rounded-full bg-[#f3f1ff] px-2 py-0.5 text-[11px] font-medium text-[#5b4cf0]">
                 {item.reason}
+              </span>
+            )}
+            {scope !== "tenant" && compact && (
+              <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
+                Affects {item.tenantCount} {item.tenantCount === 1 ? "tenant" : "tenants"}
               </span>
             )}
             <span className="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700">
@@ -123,17 +129,17 @@ export default function QueueCard({
               {item.reversible ? "Reversible" : "Irreversible"}
             </span>
           </div>
-          {scope !== "tenant" && (
-            <p className={`truncate text-[12px] text-slate-600 ${dense ? "mt-1" : "mt-2"}`}>
+          {scope !== "tenant" && !compact && (
+            <p className="mt-2 truncate text-[12px] text-slate-600">
               Affects {item.tenantCount} {item.tenantCount === 1 ? "tenant" : "tenants"}
-              {dense ? "" : `: ${item.tenantNames.join(", ")}${extra > 0 ? ` +${extra} more` : ""}`}
+              {`: ${item.tenantNames.join(", ")}${extra > 0 ? ` +${extra} more` : ""}`}
             </p>
           )}
-          <p className={`truncate text-[12px] text-slate-700 ${dense ? "mt-0.5" : "mt-1"}`}>
+          <p className={`mt-1 text-[12px] text-slate-700 ${compact ? "" : "truncate"}`}>
             <span className="font-medium text-slate-600">AI would: </span>
             {item.fixSummary}
           </p>
-          <div className={`flex w-full items-center justify-between gap-2 ${dense ? "mt-auto pt-2" : "mt-3"}`}>
+          <div className="mt-3 flex w-full items-center justify-between gap-2">
             {item.owner ? (
               <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-[11px] text-slate-600">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f3f1ff] text-[9px] font-semibold text-[#6d5cff]">
@@ -148,9 +154,7 @@ export default function QueueCard({
               <button
                 type="button"
                 onClick={() => (item.cta === "request-access" ? onRequestAccess?.(item) : onReview(item))}
-                className={`inline-flex items-center justify-center rounded-lg bg-[#6d5cff] px-3 text-[12px] font-semibold text-white outline-none hover:bg-[#5b4cf0] focus-visible:ring-2 focus-visible:ring-[#6d5cff] focus-visible:ring-offset-2 ${
-                  dense ? "h-7" : "h-8"
-                }`}
+                className="inline-flex h-8 items-center justify-center rounded-lg bg-[#6d5cff] px-3 text-[12px] font-semibold text-white outline-none hover:bg-[#5b4cf0] focus-visible:ring-2 focus-visible:ring-[#6d5cff] focus-visible:ring-offset-2"
               >
                 {item.cta === "request-access" ? "Request access" : "Review Global Fix"}
               </button>
@@ -160,9 +164,7 @@ export default function QueueCard({
                   aria-label={`More actions for ${item.issue}`}
                   aria-expanded={menu}
                   onClick={() => setMenu((v) => !v)}
-                  className={`inline-flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 outline-none hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#6d5cff] ${
-                    dense ? "h-7 w-7" : "h-9 w-9"
-                  }`}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-600 outline-none hover:bg-slate-50 focus-visible:ring-2 focus-visible:ring-[#6d5cff]"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </button>

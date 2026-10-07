@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import QueueCard, { QueueCardSkeleton } from "./QueueCard"
 import InfoTooltip from "./InfoTooltip"
 import AnnotationPin from "./AnnotationPin"
-import { rankMspQueue, slaRiskScore, QUEUE_AI_STATUSES, QUEUE_AGE_BUCKETS } from "../mspDashboard"
+import { rankMspQueue, QUEUE_AI_STATUSES, QUEUE_AGE_BUCKETS } from "../mspDashboard"
 import AssignMenu from "./AssignMenu"
 import FilterMenu from "./FilterMenu"
 
@@ -38,17 +38,7 @@ export default function ActionQueueRail({
   const [bulkMode, setBulkMode] = useState(false)
   const [checked, setChecked] = useState(() => new Set())
   const ranked = useMemo(() => rankMspQueue(items, now), [items, now])
-  const visible = useMemo(() => {
-    if (!compact) return ranked
-    if (scope === "tenant") return ranked.slice(0, 3)
-    const order = { Critical: 0, High: 1, Medium: 2, Low: 3 }
-    return [...ranked]
-      .sort((a, b) => {
-        const pd = (order[a.priority] ?? 9) - (order[b.priority] ?? 9)
-        return pd !== 0 ? pd : slaRiskScore(b, now) - slaRiskScore(a, now)
-      })
-      .slice(0, 3)
-  }, [compact, ranked, now, scope])
+  const visible = useMemo(() => (compact ? ranked.slice(0, 3) : ranked), [compact, ranked])
 
   useEffect(() => {
     const t = window.setTimeout(() => setLoading(false), 420)
@@ -75,15 +65,17 @@ export default function ActionQueueRail({
   const title = compact ? "Latest action queue" : "Action queue"
   const subtitle = tenant
     ? "Ranked by SLA risk × blast radius"
-    : "Requires human-in-the-loop approval"
+    : compact
+      ? "Ranked by SLA risk × tenants affected"
+      : "Requires human-in-the-loop approval"
 
   return (
     <section
       className={`relative flex h-full min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)] ${
-        compact && !tenant ? "min-h-0" : compact ? "min-h-[28rem]" : "min-h-[28rem] lg:min-h-[36rem]"
+        compact ? "min-h-[28rem]" : "min-h-[28rem] lg:min-h-[36rem]"
       }`}
     >
-      <div className={`shrink-0 border-b border-slate-100 ${compact && !tenant ? "px-3 py-2.5" : "px-4 py-3"}`}>
+      <div className="shrink-0 border-b border-slate-100 px-4 py-3">
         <div className="flex items-start justify-between gap-2">
           <div>
             <h2 className="text-[16px] font-semibold text-slate-900">{title}</h2>
@@ -108,13 +100,13 @@ export default function ActionQueueRail({
             )}
           </div>
         </div>
-        {!tenant && (
+        {!tenant && !compact && (
         <p className="mt-2 inline-flex items-center gap-1 text-[11px] text-slate-600" data-pin="queue-rank">
           Ranked by SLA risk × tenants affected
           <InfoTooltip label="How the queue is ranked">
             Score = (1 / hours to RTO breach) × tenants affected. A High item hitting 14 tenants can outrank a Critical hitting one.
           </InfoTooltip>
-          {!compact && pmNotes && <AnnotationPin n={3} noteId={3} onOpen={onOpenNote} className="ml-1" />}
+          {pmNotes && <AnnotationPin n={3} noteId={3} onOpen={onOpenNote} className="ml-1" />}
         </p>
         )}
         {!compact && (
@@ -191,23 +183,17 @@ export default function ActionQueueRail({
           </>
         )}
       </div>
-      <ul
-        className={`min-h-0 flex-1 ${
-          compact && !tenant
-            ? "flex flex-col gap-2 overflow-hidden p-2"
-            : "space-y-2.5 overflow-y-auto scroll-smooth overscroll-contain p-3"
-        }`}
-      >
+      <ul className="min-h-0 flex-1 space-y-2.5 overflow-y-auto scroll-smooth overscroll-contain p-3">
         {loading
           ? (compact ? [1, 2, 3] : [1, 2, 3]).map((k) => (
-              <div key={k} className={compact && !tenant ? "min-h-0 flex-1" : undefined}>
+              <div key={k}>
                 <QueueCardSkeleton />
               </div>
             ))
           : visible.map((item, idx) => (
               <div
                 key={item.id}
-                className={compact && !tenant ? "relative flex min-h-0 w-full flex-1" : "relative"}
+                className="relative"
                 data-pin={!compact && idx === 0 ? "queue-card" : undefined}
               >
                 {!compact && pmNotes && idx === 0 && (
