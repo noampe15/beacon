@@ -3,7 +3,6 @@ import { createPortal } from "react-dom"
 import { AlertTriangle, ArrowDown, ArrowUp, MoreVertical, Search, Timer, Undo2 } from "lucide-react"
 import QueueCard, { QueueCardSkeleton } from "./QueueCard"
 import InfoTooltip from "./InfoTooltip"
-import AnnotationPin from "./AnnotationPin"
 import AssignMenu from "./AssignMenu"
 import FilterMenu from "./FilterMenu"
 import TenantHoverList from "./TenantHoverList"
@@ -311,8 +310,6 @@ export default function ActionQueueWorkspace({
   onClearFilters,
   selectedId,
   onReview,
-  pmNotes,
-  onOpenNote,
   onAssign,
   onSnooze,
   onDismiss,
@@ -394,7 +391,6 @@ export default function ActionQueueWorkspace({
                   Score = (1 / hours to RTO breach) × tenants affected. A High item hitting 14 tenants can outrank a
                   Critical hitting one. Already-breached items rank first, then by how overdue they are × blast radius.
                 </InfoTooltip>
-                {pmNotes && <AnnotationPin n={3} noteId={3} onOpen={onOpenNote} className="ml-0.5" />}
               </p>
             </div>
             <p className="mt-0.5 text-[12px] text-slate-600">Requires human-in-the-loop approval</p>
@@ -452,7 +448,6 @@ export default function ActionQueueWorkspace({
           >
             Select multiple
           </button>
-          {pmNotes && <AnnotationPin n={4} noteId={4} onOpen={onOpenNote} />}
         </div>
       </header>
 
@@ -505,9 +500,6 @@ export default function ActionQueueWorkspace({
                     }`}
                     style={gridStyle(bulkMode)}
                   >
-                    {idx === 0 && pmNotes && (
-                      <AnnotationPin n={2} noteId={2} onOpen={onOpenNote} className="absolute right-2 top-2" />
-                    )}
                     {bulkMode && (
                       <div role="cell" onClick={(e) => e.stopPropagation()}>
                         <input

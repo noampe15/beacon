@@ -1,6 +1,5 @@
 import ActionQueueWorkspace from "./ActionQueueWorkspace"
 import RemediationHistory from "./RemediationHistory"
-import AnnotationPin from "./AnnotationPin"
 
 function RemediationViewToggle({ view, onView }) {
   return (
@@ -51,8 +50,6 @@ export default function RemediationPage({
   onClearFilters,
   selectedId,
   onReview,
-  pmNotes,
-  onOpenNote,
   onAssign,
   onSnooze,
   onDismiss,
@@ -79,12 +76,7 @@ export default function RemediationPage({
   onQueueAge,
   onOpenTenant,
 }) {
-  const toggle = (
-    <div className="relative">
-      <RemediationViewToggle view={view} onView={onView} />
-      {pmNotes && <AnnotationPin n={14} noteId={14} onOpen={onOpenNote} className="absolute -right-2 -top-2" />}
-    </div>
-  )
+  const toggle = <RemediationViewToggle view={view} onView={onView} />
 
   return (
     <div>
@@ -96,8 +88,6 @@ export default function RemediationPage({
             onClearFilters={onClearFilters}
             selectedId={selectedId}
             onReview={onReview}
-            pmNotes={pmNotes}
-            onOpenNote={onOpenNote}
             onAssign={onAssign}
             onSnooze={onSnooze}
             onDismiss={onDismiss}

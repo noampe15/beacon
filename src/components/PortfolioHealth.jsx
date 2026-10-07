@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react"
 import { healthForRange, mspTenants } from "../mspDashboard"
-import AnnotationPin from "./AnnotationPin"
 import MetricDelta from "./MetricDelta"
 import TenantHoverList from "./TenantHoverList"
 
@@ -98,7 +97,7 @@ function Donut({ counts, hoverKey, onHover, onOpenStatus }) {
   )
 }
 
-export default function PortfolioHealth({ range, pmNotes, onOpenNote, onOpenStatus, onOpenTenant }) {
+export default function PortfolioHealth({ range, onOpenStatus, onOpenTenant }) {
   const health = healthForRange(range)
   const deltas = health.deltas
   const [hoverKey, setHoverKey] = useState(null)
@@ -124,10 +123,8 @@ export default function PortfolioHealth({ range, pmNotes, onOpenNote, onOpenStat
 
   return (
     <section
-      data-pin="health"
       className="relative rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
     >
-      {pmNotes && <AnnotationPin n={5} noteId={5} onOpen={onOpenNote} className="absolute right-3 top-3" />}
       <div className="mb-4">
         <h2 className="text-[16px] font-semibold text-slate-900">Portfolio health distribution</h2>
         <p className="mt-0.5 text-[12px] text-slate-500">Tenants aggregated by systemic exposure</p>

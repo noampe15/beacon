@@ -1,5 +1,4 @@
 import MetricDelta from "./MetricDelta"
-import AnnotationPin from "./AnnotationPin"
 
 function Cell({ label, children, footer, className = "" }) {
   return (
@@ -11,14 +10,12 @@ function Cell({ label, children, footer, className = "" }) {
   )
 }
 
-export default function TenantSummaryStrip({ summary, pmNotes, onOpenNote }) {
+export default function TenantSummaryStrip({ summary }) {
   const empty = summary.open === 0
   return (
     <section
-      data-pin="tenant-summary"
       className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
     >
-      {pmNotes && <AnnotationPin n={10} noteId={10} onOpen={onOpenNote} className="absolute right-3 top-3 z-10" />}
       <div className="grid grid-cols-5 grid-rows-[auto_auto_auto]">
         <Cell
           label="Open issues"

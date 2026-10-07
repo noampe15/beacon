@@ -1,19 +1,16 @@
 import { efficiencyForRange } from "../mspDashboard"
 import InfoTooltip from "./InfoTooltip"
 import MetricDelta from "./MetricDelta"
-import AnnotationPin from "./AnnotationPin"
 import Sparkline from "./Sparkline"
 
-export default function AiEfficiencyHero({ range, pmNotes, onOpenNote, onOpenHistory }) {
+export default function AiEfficiencyHero({ range, onOpenHistory }) {
   const e = efficiencyForRange(range)
   const humanPct = ((e.rolledBack + e.escalated) / e.attempted) * 100
 
   return (
     <section
-      data-pin="efficiency"
       className="relative rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
     >
-      {pmNotes && <AnnotationPin n={1} noteId={1} onOpen={onOpenNote} className="absolute right-3 top-3" />}
       <div className="mb-4">
         <h2 className="text-[16px] font-semibold text-slate-900">Remediation efficiency</h2>
         <p className="text-[12px] text-slate-500">Autonomous close-out across the portfolio</p>

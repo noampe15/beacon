@@ -8,7 +8,6 @@ import SlaPerformance from "./components/SlaPerformance"
 import ActionQueueRail from "./components/ActionQueueRail"
 import TenantOverview from "./components/TenantOverview"
 import DecisionDrawer from "./components/DecisionDrawer"
-import CaseStudyPanel from "./components/CaseStudyPanel"
 import InvestigationDrawer from "./components/InvestigationDrawer"
 import RemediationModal from "./components/RemediationModal"
 import TenantsRoster from "./components/TenantsRoster"
@@ -31,7 +30,7 @@ import {
   risks,
   tenants,
 } from "./data"
-import { MSP_INDUSTRIES, exportHistoryCsv, historyRowForActivity, mspHistory, mspPmNotes, mspQueueItems, mspTenants, tenantOverviewFor } from "./mspDashboard"
+import { MSP_INDUSTRIES, exportHistoryCsv, historyRowForActivity, mspHistory, mspQueueItems, mspTenants, tenantOverviewFor } from "./mspDashboard"
 
 const ALL_CLIENT_IDS = tenants.map((item) => item.id)
 const SCOPE_TENANTS = [GLOBAL_MSP, ...tenants]
@@ -113,14 +112,12 @@ export default function App() {
   const [investigating, setInvestigating] = useState(null)
   const [remediating, setRemediating] = useState(null)
   const [reviewing, setReviewing] = useState(null)
-  const [pmNotes, setPmNotes] = useState(false)
-  const [openNote, setOpenNote] = useState(null)
-  const [caseStudy, setCaseStudy] = useState(false)
   const [mspItems, setMspItems] = useState(mspQueueItems)
   const [ownerOverrides, setOwnerOverrides] = useState({})
   const [rosterTenantId, setRosterTenantId] = useState(null)
   const [tenantsStatusFilter, setTenantsStatusFilter] = useState("all")
   const [toast, setToast] = useState("")
+  const [signedIn, setSignedIn] = useState(true)
   const [copilotQuery, setCopilotQuery] = useState("")
   const [hunting, setHunting] = useState(false)
   const [remediationView, setRemediationView] = useState("queue")
@@ -581,6 +578,24 @@ export default function App() {
     }
   }
 
+  if (!signedIn) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-[#f4f5f8] px-4">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200/80 bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+          <p className="text-[16px] font-semibold tracking-tight text-slate-900">Beacon</p>
+          <p className="mt-1 text-[13px] text-slate-600">You have been signed out.</p>
+          <button
+            type="button"
+            onClick={() => setSignedIn(true)}
+            className="mt-5 inline-flex h-9 w-full items-center justify-center rounded-full bg-[#6d5cff] px-4 text-[13px] font-semibold text-white outline-none hover:bg-[#5b4cf0] focus-visible:ring-2 focus-visible:ring-[#6d5cff] focus-visible:ring-offset-2"
+          >
+            Sign in as Molly Reid
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex min-h-svh bg-[#f4f5f8]">
       <Sidebar
@@ -592,8 +607,6 @@ export default function App() {
         onTenantChange={onTenantChange}
         envRisk={envRisk}
         envRiskByTenant={envRiskByTenant}
-        pmNotes={pmNotes}
-        onOpenNote={setOpenNote}
       />
       <div className="flex min-w-0 flex-1 flex-col">
       <Header
@@ -611,13 +624,7 @@ export default function App() {
         setFilter={setFilter}
         isGlobal={isGlobal}
         remediationView={remediationView}
-        pmNotes={pmNotes}
-        caseStudy={caseStudy}
-        onTogglePmNotes={() => {
-          setPmNotes((v) => !v)
-          setOpenNote(null)
-        }}
-        onToggleCaseStudy={() => setCaseStudy((v) => !v)}
+        onLogOut={() => setSignedIn(false)}
       />
       {page !== "settings" && (
         <CopilotBar
@@ -641,13 +648,10 @@ export default function App() {
       <main className="px-3 pb-8 lg:px-4">
         {page === "overview" && isGlobal && (
           <div className="space-y-4">
-            {caseStudy && <CaseStudyPanel open={caseStudy} onToggle={() => setCaseStudy(false)} />}
             <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
               <div className="space-y-4">
                 <PortfolioHealth
                   range={range}
-                  pmNotes={pmNotes}
-                  onOpenNote={setOpenNote}
                   onOpenStatus={(key) => {
                     setTenantsStatusFilter(key)
                     setRosterTenantId(null)
@@ -661,16 +665,12 @@ export default function App() {
                 />
                 <AiEfficiencyHero
                   range={range}
-                  pmNotes={pmNotes}
-                  onOpenNote={setOpenNote}
                   onOpenHistory={(outcome) => {
                     openHistoryNav({ outcome, actor: "AI" })
                   }}
                 />
                 <SlaPerformance
                   range={range}
-                  pmNotes={pmNotes}
-                  onOpenNote={setOpenNote}
                   onOpenBreaches={() => {
                     openHistoryNav({ sla: "SLA breached" })
                   }}
@@ -685,8 +685,6 @@ export default function App() {
                     onClearFilters={() => {}}
                     selectedId={reviewing?.id}
                     onViewAll={() => openRemediation("queue")}
-                    pmNotes={false}
-                    onOpenNote={setOpenNote}
                     {...queueHandlers}
                   />
                 </div>
@@ -699,8 +697,6 @@ export default function App() {
             overview={overview}
             queueItems={mspScoped}
             selectedId={reviewing?.id}
-            pmNotes={pmNotes}
-            onOpenNote={setOpenNote}
             onHistory={(arg) => openHistoryNav(arg)}
             onActivityAction={(entry) => {
               if (entry.action === "queue") {
@@ -742,8 +738,6 @@ export default function App() {
               setFilters((prev) => ({ ...prev, issue: "", provider: "" }))
             }}
             selectedId={reviewing?.id}
-            pmNotes={pmNotes}
-            onOpenNote={setOpenNote}
             search={queueSearch}
             onSearch={setQueueSearch}
             historyRows={historyRows}
@@ -856,54 +850,6 @@ export default function App() {
           setReviewing(null)
         }}
       />
-      {openNote && (
-        <div className="fixed inset-0 z-[80]" onClick={() => setOpenNote(null)}>
-          <div
-            role="dialog"
-            aria-labelledby="pm-note-title"
-            className="absolute left-1/2 top-24 w-[min(420px,calc(100%-2rem))] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {(() => {
-              const note = mspPmNotes.find((n) => n.id === openNote)
-              if (!note) return null
-              return (
-                <>
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d5cff]">PM note {note.id}</p>
-                  <h3 id="pm-note-title" className="mt-1 text-[16px] font-semibold text-slate-900">
-                    {note.title}
-                  </h3>
-                  <dl className="mt-3 space-y-2 text-[13px] text-slate-700">
-                    <div>
-                      <dt className="text-[11px] font-semibold uppercase text-slate-500">Decision</dt>
-                      <dd>{note.decision}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px] font-semibold uppercase text-slate-500">Alternatives considered</dt>
-                      <dd>{note.alternatives}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px] font-semibold uppercase text-slate-500">Tradeoff</dt>
-                      <dd>{note.tradeoff}</dd>
-                    </div>
-                    <div>
-                      <dt className="text-[11px] font-semibold uppercase text-slate-500">Metric it moves</dt>
-                      <dd>{note.metric}</dd>
-                    </div>
-                  </dl>
-                  <button
-                    type="button"
-                    className="mt-3 text-[12px] font-medium text-[#6d5cff]"
-                    onClick={() => setOpenNote(null)}
-                  >
-                    Close
-                  </button>
-                </>
-              )
-            })()}
-          </div>
-        </div>
-      )}
       {toast && (
         <div className="fixed bottom-4 left-1/2 z-[90] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-[13px] font-medium text-white shadow-lg">
           {toast}

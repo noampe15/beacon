@@ -91,7 +91,7 @@ function NotificationsBell({ items, onOpenNotification }) {
   )
 }
 
-function AccountMenu({ isGlobal, pmNotes, caseStudy, onTogglePmNotes, onToggleCaseStudy }) {
+function AccountMenu({ onLogOut }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -123,33 +123,18 @@ function AccountMenu({ isGlobal, pmNotes, caseStudy, onTogglePmNotes, onToggleCa
       </button>
       {open && (
         <div role="menu" className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
-          {isGlobal && (
-            <>
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-2 text-left text-[13px] text-slate-700 outline-none hover:bg-slate-50"
-                onClick={() => {
-                  onTogglePmNotes?.()
-                  setOpen(false)
-                }}
-              >
-                {pmNotes ? "Hide PM Notes" : "Show PM Notes"}
-              </button>
-              <button
-                type="button"
-                role="menuitem"
-                className="block w-full px-3 py-2 text-left text-[13px] text-slate-700 outline-none hover:bg-slate-50"
-                onClick={() => {
-                  onToggleCaseStudy?.()
-                  setOpen(false)
-                }}
-              >
-                {caseStudy ? "Hide Case Study" : "Show Case Study"}
-              </button>
-            </>
-          )}
           <p className="px-3 py-2 text-[12px] text-slate-500">Signed in as Molly Reid</p>
+          <button
+            type="button"
+            role="menuitem"
+            className="block w-full px-3 py-2 text-left text-[13px] text-slate-700 outline-none hover:bg-slate-50"
+            onClick={() => {
+              setOpen(false)
+              onLogOut?.()
+            }}
+          >
+            Log out
+          </button>
         </div>
       )}
     </div>
@@ -169,10 +154,7 @@ export default function Header({
   setFilter,
   isGlobal = false,
   remediationView = "queue",
-  pmNotes = false,
-  caseStudy = false,
-  onTogglePmNotes,
-  onToggleCaseStudy,
+  onLogOut,
 }) {
   const extraActive = headerFiltersActive(page, isGlobal, filters, remediationView)
   const showAllFilters = visibleFilterKeys(page, isGlobal, remediationView).length > 0
@@ -228,13 +210,7 @@ export default function Header({
           </AllFiltersPopover>
         )}
         <NotificationsBell items={notifications} onOpenNotification={onOpenNotification} />
-        <AccountMenu
-          isGlobal={isGlobal}
-          pmNotes={pmNotes}
-          caseStudy={caseStudy}
-          onTogglePmNotes={onTogglePmNotes}
-          onToggleCaseStudy={onToggleCaseStudy}
-        />
+        <AccountMenu onLogOut={onLogOut} />
       </div>
     </header>
   )

@@ -1,6 +1,5 @@
 import { CheckCircle2, ShieldAlert, Sparkles, UserRound } from "lucide-react"
 import { formatSlaPct, slaForRange } from "../mspDashboard"
-import AnnotationPin from "./AnnotationPin"
 import MetricDelta from "./MetricDelta"
 import Sparkline from "./Sparkline"
 
@@ -48,7 +47,7 @@ function PathChip({ icon: Icon, label, value, tone }) {
   )
 }
 
-export default function SlaPerformance({ range, tenantId, pmNotes, onOpenNote, onOpenBreaches }) {
+export default function SlaPerformance({ range, tenantId, onOpenBreaches }) {
   const sla = slaForRange(range, tenantId)
   const first = sla.sparkline?.[0]?.pct
   const last = sla.sparkline?.[sla.sparkline.length - 1]?.pct
@@ -61,10 +60,8 @@ export default function SlaPerformance({ range, tenantId, pmNotes, onOpenNote, o
 
   return (
     <section
-      data-pin="sla"
       className="relative rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]"
     >
-      {pmNotes && <AnnotationPin n={6} noteId={6} onOpen={onOpenNote} className="absolute right-3 top-3" />}
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h2 className="text-[16px] font-semibold text-slate-900">SLA performance</h2>

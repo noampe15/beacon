@@ -10,7 +10,6 @@ import {
   Wrench,
 } from "lucide-react"
 import TenantSelector from "./TenantSelector"
-import AnnotationPin from "./AnnotationPin"
 import { EnvRiskBadge } from "./Badges"
 import { envRiskSeverity } from "../data"
 
@@ -91,8 +90,6 @@ export default function Sidebar({
   onTenantChange,
   envRisk,
   envRiskByTenant,
-  pmNotes,
-  onOpenNote,
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
   const itemRefs = useRef([])
@@ -145,9 +142,6 @@ export default function Sidebar({
           {!collapsed && (
             <span className="text-[16px] font-semibold tracking-tight text-slate-900">Beacon</span>
           )}
-          {!collapsed && pmNotes && (
-            <AnnotationPin n={9} noteId={9} onOpen={onOpenNote} className="ml-auto" />
-          )}
         </div>
         <div className={`mt-3 ${collapsed ? "flex justify-center" : ""}`}>
           <Tip label="Select view" collapsed={collapsed}>
@@ -172,12 +166,6 @@ export default function Sidebar({
           {navItems.slice(0, 3).map((item, index) => {
             const Icon = item.icon
             const active = page === item.id
-            const pin =
-              item.id === "remediation" && pmNotes && !collapsed ? (
-                <AnnotationPin n={8} noteId={8} onOpen={onOpenNote} />
-              ) : item.id === "tenants" && tenantsTab && pmNotes && !collapsed ? (
-                <AnnotationPin n={7} noteId={7} onOpen={onOpenNote} />
-              ) : null
             return (
               <li key={item.id}>
                 <Tip label={item.label} collapsed={collapsed}>
@@ -206,7 +194,6 @@ export default function Sidebar({
                     )}
                     <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
                     {!collapsed && <span className="min-w-0 flex-1 truncate text-left">{item.label}</span>}
-                    {pin}
                   </button>
                 </Tip>
               </li>

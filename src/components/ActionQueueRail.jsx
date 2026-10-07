@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import QueueCard, { QueueCardSkeleton } from "./QueueCard"
 import InfoTooltip from "./InfoTooltip"
-import AnnotationPin from "./AnnotationPin"
 import { rankMspQueue, QUEUE_AI_STATUSES, QUEUE_AGE_BUCKETS } from "../mspDashboard"
 import AssignMenu from "./AssignMenu"
 import FilterMenu from "./FilterMenu"
@@ -12,8 +11,6 @@ export default function ActionQueueRail({
   onClearFilters,
   selectedId,
   onReview,
-  pmNotes,
-  onOpenNote,
   onAssign,
   onSnooze,
   onDismiss,
@@ -106,7 +103,6 @@ export default function ActionQueueRail({
           <InfoTooltip label="How the queue is ranked">
             Score = (1 / hours to RTO breach) × tenants affected. A High item hitting 14 tenants can outrank a Critical hitting one.
           </InfoTooltip>
-          {pmNotes && <AnnotationPin n={3} noteId={3} onOpen={onOpenNote} className="ml-1" />}
         </p>
         )}
         {!compact && (
@@ -178,7 +174,6 @@ export default function ActionQueueRail({
                   />
                 </>
               )}
-              {pmNotes && <AnnotationPin n={4} noteId={4} onOpen={onOpenNote} />}
             </div>
           </>
         )}
@@ -194,11 +189,7 @@ export default function ActionQueueRail({
               <div
                 key={item.id}
                 className="relative"
-                data-pin={!compact && idx === 0 ? "queue-card" : undefined}
               >
-                {!compact && pmNotes && idx === 0 && (
-                  <AnnotationPin n={2} noteId={2} onOpen={onOpenNote} className="absolute -right-1 -top-1" />
-                )}
                 <QueueCard
                   item={item}
                   selected={selectedId === item.id}
