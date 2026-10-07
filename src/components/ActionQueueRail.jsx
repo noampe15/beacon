@@ -57,6 +57,7 @@ export default function ActionQueueRail({
 
   const selectedItems = ranked.filter((row) => checked.has(row.id))
   const tenant = scope === "tenant"
+  const fill = compact && !tenant
   const showingCount = visible.length
   const totalItems = ranked.length
   const title = compact ? "Latest action queue" : "Action queue"
@@ -178,17 +179,23 @@ export default function ActionQueueRail({
           </>
         )}
       </div>
-      <ul className="min-h-0 flex-1 space-y-2.5 overflow-y-auto scroll-smooth overscroll-contain p-3">
+      <ul
+        className={`min-h-0 flex-1 p-3 ${
+          fill
+            ? "flex flex-col gap-2.5 overflow-hidden"
+            : "space-y-2.5 overflow-y-auto scroll-smooth overscroll-contain"
+        }`}
+      >
         {loading
           ? (compact ? [1, 2, 3] : [1, 2, 3]).map((k) => (
-              <div key={k}>
+              <div key={k} className={fill ? "min-h-0 flex-1" : undefined}>
                 <QueueCardSkeleton />
               </div>
             ))
-          : visible.map((item, idx) => (
+          : visible.map((item) => (
               <div
                 key={item.id}
-                className="relative"
+                className={fill ? "relative flex min-h-0 w-full flex-1 flex-col" : "relative"}
               >
                 <QueueCard
                   item={item}

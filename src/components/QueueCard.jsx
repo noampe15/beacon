@@ -45,6 +45,7 @@ export default function QueueCard({
   const extra = Math.max(0, (item.tenantCount ?? 0) - (item.tenantNames ?? []).length)
   const reasonChip = Boolean(item.reason && (scope === "tenant" || compact))
   const aiStatus = item.aiStatus ?? (scope === "tenant" ? null : "Waiting on human")
+  const fill = compact && scope !== "tenant"
 
   useEffect(() => {
     if (!menu) return
@@ -67,10 +68,10 @@ export default function QueueCard({
   return (
     <li
       className={`w-full rounded-xl border p-3 transition hover:border-slate-300 ${
-        selected ? "border-[#6d5cff]/40 bg-[#f7f6ff]" : "border-slate-200 bg-white"
-      }`}
+        fill ? "flex h-full min-h-0 flex-col" : ""
+      } ${selected ? "border-[#6d5cff]/40 bg-[#f7f6ff]" : "border-slate-200 bg-white"}`}
     >
-      <div className="flex min-w-0 items-start gap-2">
+      <div className={`flex min-w-0 ${fill ? "h-full min-h-0 flex-1 flex-col" : "items-start gap-2"}`}>
         {bulkMode && (
           <input
             type="checkbox"
@@ -80,7 +81,7 @@ export default function QueueCard({
             aria-label={`Select ${item.issue}`}
           />
         )}
-        <div className="min-w-0 flex-1">
+        <div className={`min-w-0 flex-1 ${fill ? "flex min-h-0 flex-1 flex-col" : ""}`}>
           <div className="flex items-start justify-between gap-2">
             <p className="min-w-0 text-[13.5px] font-semibold leading-snug text-slate-900">
               {item.issue}
@@ -139,7 +140,7 @@ export default function QueueCard({
             <span className="font-medium text-slate-600">AI would: </span>
             {item.fixSummary}
           </p>
-          <div className="mt-3 flex w-full items-center justify-between gap-2">
+          <div className={`flex w-full items-center justify-between gap-2 ${fill ? "mt-auto pt-3" : "mt-3"}`}>
             {item.owner ? (
               <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-[11px] text-slate-600">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f3f1ff] text-[9px] font-semibold text-[#6d5cff]">
