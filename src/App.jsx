@@ -1,27 +1,52 @@
 import { useMemo, useState } from "react"
 import Header from "./components/Header"
-import NavFilters from "./components/NavFilters"
+import Sidebar from "./components/Sidebar"
 import CopilotBar from "./components/CopilotBar"
-import OperationalImpactMatrix from "./components/OperationalImpactMatrix"
-import InfrastructureDeficit from "./components/InfrastructureDeficit"
-import TopRisks from "./components/TopRisks"
+import AiEfficiencyHero from "./components/AiEfficiencyHero"
+import PortfolioHealth from "./components/PortfolioHealth"
+import SlaPerformance from "./components/SlaPerformance"
+import ActionQueueRail from "./components/ActionQueueRail"
+import TenantOverview from "./components/TenantOverview"
+import DecisionDrawer from "./components/DecisionDrawer"
+import CaseStudyPanel from "./components/CaseStudyPanel"
 import InvestigationDrawer from "./components/InvestigationDrawer"
 import RemediationModal from "./components/RemediationModal"
+import TenantsRoster from "./components/TenantsRoster"
+import TenantDetail from "./components/TenantDetail"
 import ResourcesPage from "./components/ResourcesPage"
+import RemediationPage from "./components/RemediationPage"
 import SettingsPage from "./components/SettingsPage"
 import { applyHunt, copilotBanner, parseCopilotQuery } from "./copilot"
 import {
+  applyPortfolio,
   applyTenant,
   businessUnits,
+  buildRemediationQueue,
+  clusterRisksByIssue,
   deficitRows,
   environmentRiskLevel,
   expandSharedIssues,
+  GLOBAL_MSP,
   healthyResources,
   risks,
   tenants,
 } from "./data"
+import { MSP_INDUSTRIES, exportHistoryCsv, historyRowForActivity, mspHistory, mspPmNotes, mspQueueItems, mspTenants, tenantOverviewFor } from "./mspDashboard"
 
-const PRIORITY_ORDER = ["Critical", "High", "Medium", "Low", "None"]
+const ALL_CLIENT_IDS = tenants.map((item) => item.id)
+const SCOPE_TENANTS = [GLOBAL_MSP, ...tenants]
+const PRIORITY_ORDER = ["Critical", "High", "Medium", "Low"]
+
+function uniqueInOrder(values) {
+  const seen = new Set()
+  const out = []
+  for (const value of values) {
+    if (!value || seen.has(value)) continue
+    seen.add(value)
+    out.push(value)
+  }
+  return out
+}
 
 function uniqueByResourceName(rows) {
   const best = new Map()
@@ -39,17 +64,6 @@ function uniqueByResourceName(rows) {
   return out
 }
 
-function uniqueInOrder(values) {
-  const seen = new Set()
-  const out = []
-  for (const value of values) {
-    if (!value || seen.has(value)) continue
-    seen.add(value)
-    out.push(value)
-  }
-  return out
-}
-
 function applyFilters(list, filters) {
   let next = list.filter((row) => {
     if (
@@ -61,7 +75,12 @@ function applyFilters(list, filters) {
     }
     if (filters.type && row.type !== filters.type) return false
     if (filters.issue && (row.issue || "") !== filters.issue) return false
-    if (filters.provider && row.provider !== filters.provider) return false
+    if (filters.provider) {
+      const providers = (row.affectedProviders ?? []).map((item) => item.name)
+      if (providers.length ? !providers.includes(filters.provider) : row.provider !== filters.provider) {
+        return false
+      }
+    }
     if (filters.businessUnit && row.businessUnit !== filters.businessUnit) return false
     if (filters.priority && row.priority !== filters.priority) return false
     return true
@@ -75,7 +94,9 @@ function applyFilters(list, filters) {
       next = [...next].sort((a, b) => b.rtoDelta - a.rtoDelta)
       break
     case "name-asc":
-      next = [...next].sort((a, b) => a.name.localeCompare(b.name))
+      next = [...next].sort((a, b) =>
+        (a.cluster ? a.issue || a.name : a.name).localeCompare(b.cluster ? b.issue || b.name : b.name),
+      )
       break
     default:
       next = [...next].sort((a, b) => b.score - a.score)
@@ -85,14 +106,36 @@ function applyFilters(list, filters) {
 
 export default function App() {
   const [page, setPage] = useState("overview")
-  const [tenantId, setTenantId] = useState(tenants[0].id)
-  const [range, setRange] = useState("Last 7 Days")
-  const [refreshing, setRefreshing] = useState(false)
-  const [jitter, setJitter] = useState(0)
+  const [tenantId, setTenantId] = useState(GLOBAL_MSP.id)
+  const [clientIds, setClientIds] = useState(ALL_CLIENT_IDS)
+  const [range, setRange] = useState("Last 7 days")
+  const jitter = 0
   const [investigating, setInvestigating] = useState(null)
   const [remediating, setRemediating] = useState(null)
+  const [reviewing, setReviewing] = useState(null)
+  const [pmNotes, setPmNotes] = useState(false)
+  const [openNote, setOpenNote] = useState(null)
+  const [caseStudy, setCaseStudy] = useState(false)
+  const [mspItems, setMspItems] = useState(mspQueueItems)
+  const [ownerOverrides, setOwnerOverrides] = useState({})
+  const [rosterTenantId, setRosterTenantId] = useState(null)
+  const [tenantsStatusFilter, setTenantsStatusFilter] = useState("all")
+  const [toast, setToast] = useState("")
   const [copilotQuery, setCopilotQuery] = useState("")
   const [hunting, setHunting] = useState(false)
+  const [remediationView, setRemediationView] = useState("queue")
+  const [queueSearch, setQueueSearch] = useState("")
+  const [historyOutcome, setHistoryOutcome] = useState("")
+  const [historyTenant, setHistoryTenant] = useState("")
+  const [historyApprover, setHistoryApprover] = useState("")
+  const [historySla, setHistorySla] = useState("")
+  const [historyActor, setHistoryActor] = useState("")
+  const [historyEvent, setHistoryEvent] = useState("")
+  const [historyFocusId, setHistoryFocusId] = useState("")
+  const [queueAiStatus, setQueueAiStatus] = useState("")
+  const [queueAge, setQueueAge] = useState("")
+  const [tenantPatches, setTenantPatches] = useState({})
+  const [rollbackEntry, setRollbackEntry] = useState(null)
   const [filters, setFilters] = useState({
     resource: "",
     type: "",
@@ -103,78 +146,38 @@ export default function App() {
     sort: "score-desc",
   })
 
-  const tenant = tenants.find((t) => t.id === tenantId) ?? tenants[0]
-
-  const { units: liveUnits, deficits: liveDeficits, risks: liveRisks, healthy: liveHealthy } = useMemo(
-    () =>
-      applyTenant(tenant, {
-        businessUnits,
-        deficitRows,
-        risks,
-        healthyResources,
-        jitter,
-        range,
-      }),
-    [tenant, jitter, range],
+  const isGlobal = tenantId === GLOBAL_MSP.id
+  const roster = useMemo(
+    () => mspTenants.map((row) => (ownerOverrides[row.id] ? { ...row, owner: ownerOverrides[row.id] } : row)),
+    [ownerOverrides],
   )
+
+  const activeTenants = useMemo(() => {
+    if (!isGlobal) {
+      return tenants.filter((item) => item.id === tenantId)
+    }
+    const selected = new Set(clientIds)
+    return tenants.filter((item) => selected.has(item.id))
+  }, [isGlobal, tenantId, clientIds])
+
+  const { units: liveUnits, deficits: liveDeficits, risks: liveRisks, healthy: liveHealthy } = useMemo(() => {
+    const opts = { businessUnits, deficitRows, risks, healthyResources, jitter, range }
+    if (!isGlobal) {
+      const tenant = tenants.find((item) => item.id === tenantId) ?? tenants[0]
+      return applyTenant(tenant, opts)
+    }
+    return applyPortfolio(activeTenants, opts)
+  }, [isGlobal, tenantId, activeTenants, jitter, range])
 
   const filtered = useMemo(() => {
     const hunt = parseCopilotQuery(copilotQuery)
     return applyHunt(applyFilters(liveRisks, filters), hunt)
   }, [liveRisks, filters, copilotQuery])
 
-  const banner = useMemo(
-    () => (copilotQuery && !hunting ? copilotBanner(copilotQuery, filtered) : ""),
-    [copilotQuery, hunting, filtered],
-  )
-
-  const envRisk = useMemo(() => environmentRiskLevel(liveRisks), [liveRisks])
-
-  const envRiskByTenant = useMemo(() => {
-    const map = {}
-    for (const item of tenants) {
-      const { risks: tenantRisks } = applyTenant(item, {
-        businessUnits,
-        deficitRows,
-        risks,
-        healthyResources,
-        jitter,
-        range,
-      })
-      map[item.id] = environmentRiskLevel(tenantRisks)
-    }
-    return map
-  }, [jitter, range])
-
-  const notifications = useMemo(() => {
-    const items = []
-    if (tenant.status !== "live") {
-      items.push({
-        id: `tenant-${tenant.id}`,
-        title: tenant.statusLabel,
-        body: `${tenant.name} environment needs attention`,
-        time: "just now",
-        priority: tenant.status === "incident" ? "Critical" : "High",
-      })
-    }
-    for (const row of liveRisks) {
-      if (row.priority !== "Critical" && row.priority !== "High") continue
-      items.push({
-        id: row.id,
-        title: row.issue,
-        body: row.name,
-        time: (row.checkedAgo ?? "").replace(/^checked\s+/i, ""),
-        priority: row.priority,
-        risk: row,
-      })
-    }
-    return items.slice(0, 8)
-  }, [liveRisks, tenant])
-
   const resourceRows = useMemo(() => {
     const hunt = parseCopilotQuery(copilotQuery)
     const findings = expandSharedIssues(filtered)
-    const healthy = applyHunt(applyFilters(liveHealthy, filters), hunt)
+    const healthy = applyHunt(applyFilters(liveHealthy ?? [], filters), hunt)
     const combined = uniqueByResourceName([...findings, ...healthy])
     switch (filters.sort) {
       case "score-asc":
@@ -206,31 +209,256 @@ export default function App() {
     return map
   }, [liveRisks])
 
+  const clustered = useMemo(() => {
+    if (isGlobal) {
+      const hunt = parseCopilotQuery(copilotQuery)
+      return applyHunt(applyFilters(buildRemediationQueue(activeTenants), filters), hunt)
+    }
+    const groups = clusterRisksByIssue(filtered)
+    switch (filters.sort) {
+      case "score-asc":
+        return [...groups].sort((a, b) => a.score - b.score)
+      case "rto-desc":
+        return [...groups].sort((a, b) => b.rtoDelta - a.rtoDelta)
+      case "name-asc":
+        return [...groups].sort((a, b) => (a.issue || a.name).localeCompare(b.issue || b.name))
+      default:
+        return groups
+    }
+  }, [isGlobal, activeTenants, filtered, filters, copilotQuery])
+
+  const banner = useMemo(
+    () =>
+      copilotQuery && !hunting
+        ? copilotBanner(copilotQuery, filtered, { clustered, units: liveUnits, global: isGlobal })
+        : "",
+    [copilotQuery, hunting, filtered, clustered, liveUnits, isGlobal],
+  )
+
+  const envRisk = useMemo(() => environmentRiskLevel(liveRisks), [liveRisks])
+
+  const envRiskByTenant = useMemo(() => {
+    const map = {}
+    const opts = { businessUnits, deficitRows, risks, healthyResources, jitter, range }
+    for (const item of tenants) {
+      const { risks: tenantRisks } = applyPortfolio([item], opts)
+      map[item.id] = environmentRiskLevel(tenantRisks)
+    }
+    const all = applyPortfolio(tenants, opts)
+    map[GLOBAL_MSP.id] = environmentRiskLevel(all.risks)
+    return map
+  }, [jitter, range])
+
+  const notifications = useMemo(() => {
+    const items = []
+    if (isGlobal) {
+      for (const cluster of clustered) {
+        if (cluster.priority !== "Critical" && cluster.priority !== "High") continue
+        items.push({
+          id: cluster.id,
+          title: cluster.issue,
+          body: `Affects ${cluster.tenantCount} tenants`,
+          time: (cluster.checkedAgo ?? "").replace(/^checked\s+/i, ""),
+          priority: cluster.priority,
+          risk: cluster,
+        })
+      }
+    } else {
+      for (const row of liveRisks) {
+        if (row.priority !== "Critical" && row.priority !== "High") continue
+        items.push({
+          id: row.id,
+          title: row.issue,
+          body: row.name,
+          time: (row.checkedAgo ?? "").replace(/^checked\s+/i, ""),
+          priority: row.priority,
+          risk: row,
+        })
+      }
+    }
+    return items.slice(0, 8)
+  }, [isGlobal, clustered, liveRisks])
+
   const filterOptions = useMemo(() => {
-    const catalog = [...liveRisks, ...liveHealthy]
-    const priorities = uniqueInOrder(catalog.map((row) => row.priority))
     return {
       resource: uniqueInOrder([
-        ...catalog.map((row) => row.name),
+        ...liveRisks.map((row) => row.name),
         ...liveRisks.flatMap((row) => row.relatedResources ?? []),
       ]),
-      type: uniqueInOrder(catalog.map((row) => row.type)),
-      issue: uniqueInOrder(liveRisks.map((row) => row.issue)),
-      provider: uniqueInOrder(catalog.map((row) => row.provider)),
-      businessUnit: uniqueInOrder(catalog.map((row) => row.businessUnit)),
-      priority: PRIORITY_ORDER.filter((level) => priorities.includes(level)),
+      type: uniqueInOrder(liveRisks.map((row) => row.type)),
+      issue: uniqueInOrder([
+        ...liveRisks.map((row) => row.issue),
+        ...mspItems.map((row) => row.issue),
+      ]),
+      provider: uniqueInOrder(liveRisks.map((row) => row.provider)),
+      businessUnit: uniqueInOrder(liveRisks.map((row) => row.businessUnit)),
+      industry: MSP_INDUSTRIES,
+      priority: PRIORITY_ORDER,
     }
-  }, [liveRisks, liveHealthy])
+  }, [liveRisks, mspItems])
 
   function setFilter(key, value) {
     setFilters((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const overview = useMemo(() => (isGlobal ? null : tenantOverviewFor(tenantId, range)), [isGlobal, tenantId, range])
+
+  const mspScoped = useMemo(() => {
+    if (!isGlobal) {
+      return (overview?.queue ?? [])
+        .map((item) => {
+          const patch = tenantPatches[`${tenantId}:${item.id}`]
+          return patch ? { ...item, ...patch } : item
+        })
+        .filter((item) => {
+          if (item.dismissed) return false
+          if (item.snoozeUntil && item.snoozeUntil > Date.now()) return false
+          if (filters.priority && item.priority !== filters.priority) return false
+          return true
+        })
+    }
+    const tenantName = roster.find((t) => t.id === tenantId)?.name ?? tenants.find((t) => t.id === tenantId)?.name
+    const industryIds =
+      filters.businessUnit
+        ? new Set(roster.filter((t) => t.industry === filters.businessUnit).map((t) => t.id))
+        : null
+    return mspItems.filter((item) => {
+      if (item.dismissed) return false
+      if (item.snoozeUntil && item.snoozeUntil > Date.now()) return false
+      if (filters.priority && item.priority !== filters.priority) return false
+      if (industryIds) {
+        return item.affectedTenants?.some((t) => industryIds.has(t.id)) || (item.tenantNames ?? []).some((name) => roster.some((t) => t.name === name && industryIds.has(t.id)))
+      }
+      return true
+    })
+  }, [mspItems, isGlobal, tenantId, roster, filters.businessUnit, filters.priority, overview, tenantPatches])
+
+  const mspVisible = useMemo(() => {
+    const q = queueSearch.trim().toLowerCase()
+    return mspScoped.filter((item) => {
+      if (filters.issue && item.issue !== filters.issue) return false
+      if (filters.priority && item.priority !== filters.priority) return false
+      if (filters.provider) {
+        const blob = `${item.issue} ${item.fixSummary} ${item.category}`.toLowerCase()
+        const want = filters.provider.toLowerCase()
+        const inferred = blob.includes("blob") || blob.includes("azure") ? "azure" : blob.includes("gcp") ? "gcp" : "aws"
+        if (!inferred.startsWith(want.slice(0, 3).toLowerCase()) && !blob.includes(want)) return false
+      }
+      if (q) {
+        const hay = [item.issue, item.fixSummary, ...(item.tenantNames ?? [])].join(" ").toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      if (queueAiStatus && item.aiStatus !== queueAiStatus) return false
+      if (queueAge && item.ageBucket !== queueAge) return false
+      return true
+    })
+  }, [mspScoped, filters.issue, filters.priority, filters.provider, queueSearch, queueAiStatus, queueAge])
+
+  const historyRows = useMemo(() => {
+    let rows = mspHistory
+    if (!isGlobal) {
+      rows = rows.filter((row) => row.tenantId === tenantId)
+    } else if (filters.businessUnit) {
+      const ids = new Set(roster.filter((t) => t.industry === filters.businessUnit).map((t) => t.id))
+      rows = rows.filter((row) => ids.has(row.tenantId))
+    }
+    return rows
+  }, [isGlobal, tenantId, filters.businessUnit, roster])
+
+  const filterChips = useMemo(() => {
+    const chips = []
+    if (filters.issue) chips.push(`Issue: ${filters.issue}`)
+    if (filters.provider) chips.push(`Provider: ${filters.provider}`)
+    if (queueAiStatus) chips.push(`AI status: ${queueAiStatus}`)
+    if (queueAge) chips.push(`Age: ${queueAge}`)
+    return chips
+  }, [filters.issue, filters.provider, queueAiStatus, queueAge])
+
+  function flash(message) {
+    setToast(message)
+    window.setTimeout(() => setToast(""), 2400)
+  }
+
+  function patchItem(id, patch) {
+    if (!isGlobal) {
+      setTenantPatches((prev) => ({
+        ...prev,
+        [`${tenantId}:${id}`]: { ...(prev[`${tenantId}:${id}`] ?? {}), ...patch },
+      }))
+      return
+    }
+    setMspItems((prev) => prev.map((row) => (row.id === id ? { ...row, ...patch } : row)))
+  }
+
+  function openRemediation(view = "queue") {
+    setRemediationView(view)
+    setPage("remediation")
+  }
+
+  function openHistoryNav(arg = {}) {
+    const opts = typeof arg === "string" ? { outcome: arg } : (arg ?? {})
+    setHistoryOutcome(opts.outcome ?? "")
+    setHistoryActor(opts.actor ?? "")
+    setHistoryEvent(opts.event ?? "")
+    setHistoryTenant(opts.tenant ?? "")
+    setHistoryApprover("")
+    setHistorySla(opts.sla ?? "")
+    setHistoryFocusId(opts.focusId ?? "")
+    openRemediation("history")
+  }
+
+  function openHistoryRow(row, { rollback = false } = {}) {
+    setHistoryOutcome("")
+    setHistoryTenant("")
+    setHistoryApprover("")
+    setHistorySla("")
+    setHistoryActor("")
+    setHistoryEvent("")
+    setHistoryFocusId(row?.id ?? "")
+    setReviewing(null)
+    setRollbackEntry(rollback && row ? row : null)
+    openRemediation("history")
+  }
+
+  const queueHandlers = {
+    onReview: (item) => {
+      setRollbackEntry(null)
+      setReviewing(item)
+    },
+    onAssign: (item, person) => {
+      patchItem(item.id, { owner: person })
+      flash(`Assigned ${item.issue} to ${person.name}`)
+    },
+    onSnooze: (item) => {
+      patchItem(item.id, { snoozeUntil: Date.now() + 60 * 60 * 1000, breachAt: item.breachAt + 60 * 60 * 1000 })
+      flash("Snoozed 1 hour")
+    },
+    onDismiss: (item) => {
+      patchItem(item.id, { dismissed: true })
+      flash("Dismissed from the HITL queue")
+    },
+    onBulkApprove: (rows) => {
+      rows.forEach((row) => patchItem(row.id, { dismissed: true }))
+      flash(`Approved ${rows.length} similar remediations`)
+    },
+    onBulkAssign: (rows, person) => {
+      rows.forEach((row) => patchItem(row.id, { owner: person }))
+      flash(`Assigned ${rows.length} items to ${person.name}`)
+    },
+    onRequestAccess: (item) => {
+      flash(`Access request sent for ${item.issue}`)
+    },
   }
 
   function onTenantChange(id) {
     setTenantId(id)
     setInvestigating(null)
     setRemediating(null)
+    if (id === GLOBAL_MSP.id) setClientIds(ALL_CLIENT_IDS)
+    else setClientIds([id])
     setFilters((prev) => ({ ...prev, resource: "" }))
+    setQueueAiStatus("")
+    setQueueAge("")
   }
 
   function onCopilotHunt(query) {
@@ -239,16 +467,45 @@ export default function App() {
     window.setTimeout(() => {
       setCopilotQuery(query)
       setHunting(false)
-    }, 900)
-  }
-
-  function onRefresh() {
-    setRefreshing(true)
-    setJitter((n) => (n === 0 ? 1 : 0))
-    window.setTimeout(() => setRefreshing(false), 700)
+    }, 1100)
   }
 
   function onExport() {
+    if (page === "remediation" && remediationView === "history") {
+      exportHistoryCsv(historyRows)
+      return
+    }
+    if (isGlobal) {
+      const header = [
+        "Issue",
+        "Tenant",
+        "Provider",
+        "RTO Delta",
+        "Priority",
+        "Score",
+      ]
+      const lines = clustered.map((row) =>
+        [
+          row.issue,
+          (row.affectedTenants ?? []).map((item) => item.name).join("; "),
+          (row.affectedProviders ?? []).map((item) => item.name).join("; ") || row.provider,
+          `+${row.rtoDelta}h`,
+          row.priority,
+          row.score,
+        ]
+          .map((cell) => `"${String(cell).replaceAll('"', '""')}"`)
+          .join(","),
+      )
+      const csv = [header.join(","), ...lines].join("\n")
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = "beacon-msp-top-risks.csv"
+      a.click()
+      URL.revokeObjectURL(url)
+      return
+    }
     const header = [
       "Resource",
       "Type",
@@ -285,30 +542,75 @@ export default function App() {
     URL.revokeObjectURL(url)
   }
 
+  const scopeName = isGlobal
+    ? GLOBAL_MSP.name
+    : (tenants.find((t) => t.id === tenantId)?.name ?? "Tenant")
+  const rosterName = roster.find((t) => t.id === rosterTenantId)?.name
+  const pageTitle =
+    page === "overview"
+      ? "Overview"
+      : page === "remediation"
+        ? "Remediation"
+        : page === "settings"
+          ? "Settings"
+          : isGlobal
+            ? (rosterTenantId ? "Summary" : "Tenants")
+            : "Resources"
+  const breadcrumb = !isGlobal
+    ? ["Multi-tenant", "Tenants", scopeName]
+    : page === "tenants" && rosterTenantId
+      ? [GLOBAL_MSP.name, "Tenants", rosterName, "Summary"]
+      : [scopeName, pageTitle]
+
+  function onSetPage(id) {
+    setPage(id)
+    setRosterTenantId(null)
+    if (id === "tenants") {
+      setFilters((prev) =>
+        MSP_INDUSTRIES.includes(prev.businessUnit) ? prev : { ...prev, businessUnit: "" },
+      )
+    } else if (id === "overview" && MSP_INDUSTRIES.includes(filters.businessUnit)) {
+      setFilters((prev) => ({ ...prev, businessUnit: "" }))
+    }
+  }
+
   return (
-    <div className="min-h-svh bg-[#f4f5f8]">
-      <Header
-        tenants={tenants}
+    <div className="flex min-h-svh bg-[#f4f5f8]">
+      <Sidebar
+        page={page}
+        setPage={onSetPage}
+        isGlobal={isGlobal}
+        tenants={SCOPE_TENANTS}
         tenantId={tenantId}
         onTenantChange={onTenantChange}
         envRisk={envRisk}
         envRiskByTenant={envRiskByTenant}
+        pmNotes={pmNotes}
+        onOpenNote={setOpenNote}
+      />
+      <div className="flex min-w-0 flex-1 flex-col">
+      <Header
+        pageTitle={pageTitle}
+        breadcrumb={breadcrumb}
         range={range}
         setRange={setRange}
-        onRefresh={onRefresh}
-        refreshing={refreshing}
-        onExport={onExport}
         notifications={notifications}
         onOpenNotification={(item) => {
           if (item.risk) setInvestigating(item.risk)
         }}
-      />
-      <NavFilters
         page={page}
-        setPage={setPage}
         filters={filters}
         options={filterOptions}
         setFilter={setFilter}
+        isGlobal={isGlobal}
+        remediationView={remediationView}
+        pmNotes={pmNotes}
+        caseStudy={caseStudy}
+        onTogglePmNotes={() => {
+          setPmNotes((v) => !v)
+          setOpenNote(null)
+        }}
+        onToggleCaseStudy={() => setCaseStudy((v) => !v)}
       />
       {page !== "settings" && (
         <CopilotBar
@@ -316,6 +618,17 @@ export default function App() {
           hunting={hunting}
           banner={banner}
           lastQuery={copilotQuery}
+          global={isGlobal}
+          placeholder={
+            isGlobal
+              ? undefined
+              : `Ask about ${scopeName}, e.g. Why are 4 fixes waiting on a human?`
+          }
+          suggestions={
+            !isGlobal && page === "overview"
+              ? ["Summarize this week", "What changed since Monday?"]
+              : []
+          }
           onClear={() => {
             setCopilotQuery("")
             setHunting(false)
@@ -323,23 +636,179 @@ export default function App() {
         />
       )}
 
-      <main className="px-4 pb-8 lg:px-6">
-        {page === "overview" && (
+      <main className="px-3 pb-8 lg:px-4">
+        {page === "overview" && isGlobal && (
           <div className="space-y-4">
-            <div className="grid gap-4 xl:grid-cols-2">
-              <OperationalImpactMatrix units={liveUnits} range={range} />
-              <InfrastructureDeficit rows={liveDeficits} />
+            {caseStudy && <CaseStudyPanel open={caseStudy} onToggle={() => setCaseStudy(false)} />}
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+              <div className="space-y-4">
+                <PortfolioHealth
+                  range={range}
+                  pmNotes={pmNotes}
+                  onOpenNote={setOpenNote}
+                  onOpenStatus={(key) => {
+                    setTenantsStatusFilter(key)
+                    setRosterTenantId(null)
+                    setPage("tenants")
+                  }}
+                  onOpenTenant={(id) => {
+                    setTenantsStatusFilter("all")
+                    setPage("tenants")
+                    setRosterTenantId(id)
+                  }}
+                />
+                <AiEfficiencyHero
+                  range={range}
+                  pmNotes={pmNotes}
+                  onOpenNote={setOpenNote}
+                  onOpenHistory={(outcome) => {
+                    openHistoryNav({ outcome, actor: "AI" })
+                  }}
+                />
+                <SlaPerformance
+                  range={range}
+                  pmNotes={pmNotes}
+                  onOpenNote={setOpenNote}
+                  onOpenBreaches={() => {
+                    openHistoryNav({ sla: "SLA breached" })
+                  }}
+                />
+              </div>
+              <div className="relative min-h-[28rem] lg:min-h-0">
+                <div className="lg:absolute lg:inset-0">
+                  <ActionQueueRail
+                    compact
+                    items={mspScoped}
+                    filterChips={[]}
+                    onClearFilters={() => {}}
+                    selectedId={reviewing?.id}
+                    onViewAll={() => openRemediation("queue")}
+                    pmNotes={false}
+                    onOpenNote={setOpenNote}
+                    {...queueHandlers}
+                  />
+                </div>
+              </div>
             </div>
-            <TopRisks
-              rows={filtered.slice(0, 10)}
-              total={liveRisks.length}
-              selectedId={investigating?.id ?? remediating?.id}
-              onInvestigate={setInvestigating}
-              onRemediate={setRemediating}
-            />
           </div>
         )}
-        {page === "resources" && (
+        {page === "overview" && !isGlobal && overview && (
+          <TenantOverview
+            overview={overview}
+            queueItems={mspScoped}
+            selectedId={reviewing?.id}
+            pmNotes={pmNotes}
+            onOpenNote={setOpenNote}
+            onHistory={(arg) => openHistoryNav(arg)}
+            onActivityAction={(entry) => {
+              if (entry.action === "queue") {
+                const item = mspScoped.find((row) => row.id === entry.queueId)
+                if (item) {
+                  setHistoryFocusId("")
+                  setRollbackEntry(null)
+                  setReviewing(item)
+                  openRemediation("queue")
+                }
+                return
+              }
+              const row = historyRowForActivity(entry, tenantId)
+              if (!row) {
+                flash("No matching history row")
+                return
+              }
+              openHistoryRow(row, { rollback: Boolean(entry.openRollback) || Boolean(entry.openChange) })
+            }}
+            onViewAll={() => openRemediation("queue")}
+            onQueueFilter={({ status, age }) => {
+              setQueueAiStatus(status ?? "")
+              setQueueAge(age ?? "")
+              openRemediation("queue")
+            }}
+            queueHandlers={queueHandlers}
+          />
+        )}
+        {page === "remediation" && (
+          <RemediationPage
+            view={remediationView}
+            onView={setRemediationView}
+            queueItems={mspVisible}
+            filterChips={filterChips}
+            onClearFilters={() => {
+              setQueueSearch("")
+              setQueueAiStatus("")
+              setQueueAge("")
+              setFilters((prev) => ({ ...prev, issue: "", provider: "" }))
+            }}
+            selectedId={reviewing?.id}
+            pmNotes={pmNotes}
+            onOpenNote={setOpenNote}
+            search={queueSearch}
+            onSearch={setQueueSearch}
+            historyRows={historyRows}
+            isGlobal={isGlobal}
+            scope={isGlobal ? "global" : "tenant"}
+            queueAiStatus={queueAiStatus}
+            queueAge={queueAge}
+            onQueueAiStatus={isGlobal ? undefined : setQueueAiStatus}
+            onQueueAge={isGlobal ? undefined : setQueueAge}
+            historyOutcome={historyOutcome}
+            historyTenant={historyTenant}
+            historyApprover={historyApprover}
+            historySla={historySla}
+            historyActor={historyActor}
+            historyEvent={historyEvent}
+            historyFocusId={historyFocusId}
+            onHistoryFilter={(key, value) => {
+              if (key === "outcome") setHistoryOutcome(value)
+              if (key === "tenant") setHistoryTenant(value)
+              if (key === "approver") setHistoryApprover(value)
+              if (key === "sla") setHistorySla(value)
+              if (key === "actor") setHistoryActor(value)
+              if (key === "event") setHistoryEvent(value)
+            }}
+            onViewRollback={(row) => {
+              setReviewing(null)
+              setRollbackEntry(row)
+            }}
+            {...queueHandlers}
+          />
+        )}
+        {page === "tenants" && isGlobal && (
+          <div className="space-y-4">
+            {rosterTenantId ? (
+              <TenantDetail
+                tenant={roster.find((t) => t.id === rosterTenantId) ?? roster[0]}
+                range={range}
+                onBack={() => setRosterTenantId(null)}
+                onAssign={(id, person) => {
+                  setOwnerOverrides((prev) => ({ ...prev, [id]: person }))
+                  flash(`Assigned ${person.name} as owner`)
+                }}
+                onOpenQueue={(queueId) => {
+                  const item = mspItems.find((row) => row.id === queueId)
+                  if (!item) {
+                    flash("No matching Action queue item")
+                    return
+                  }
+                  setTenantId(GLOBAL_MSP.id)
+                  setRollbackEntry(null)
+                  setReviewing(item)
+                  openRemediation("queue")
+                }}
+              />
+            ) : (
+              <TenantsRoster
+                tenants={roster}
+                statusFilter={tenantsStatusFilter}
+                onStatusFilter={setTenantsStatusFilter}
+                industry={filters.businessUnit}
+                onOpen={setRosterTenantId}
+                range={range}
+              />
+            )}
+          </div>
+        )}
+        {page === "tenants" && !isGlobal && (
           <ResourcesPage
             rows={resourceRows}
             selectedId={investigating?.id ?? remediating?.id}
@@ -351,8 +820,89 @@ export default function App() {
         {page === "settings" && <SettingsPage />}
       </main>
 
-      <InvestigationDrawer risk={investigating} onClose={() => setInvestigating(null)} />
-      <RemediationModal risk={remediating} onClose={() => setRemediating(null)} />
+      <InvestigationDrawer
+        risk={investigating}
+        onClose={() => setInvestigating(null)}
+        onRemediate={(row) => {
+          setInvestigating(null)
+          setRemediating(row)
+        }}
+      />
+      <RemediationModal risk={isGlobal ? null : remediating} onClose={() => setRemediating(null)} />
+      <DecisionDrawer
+        item={reviewing}
+        historyEntry={rollbackEntry}
+        onClose={() => {
+          setReviewing(null)
+          setRollbackEntry(null)
+        }}
+        onDecide={(action, item) => {
+          if (action === "approve") {
+            patchItem(item.id, { dismissed: true })
+            flash("Approved. Change will apply in the next maintenance window.")
+          } else if (action === "reject") {
+            patchItem(item.id, { dismissed: true })
+            flash("Rejected. Auto-apply remains blocked.")
+          } else {
+            flash("Requested changes. AI will restage the plan.")
+          }
+          setReviewing(null)
+        }}
+      />
+      {openNote && (
+        <div className="fixed inset-0 z-[80]" onClick={() => setOpenNote(null)}>
+          <div
+            role="dialog"
+            aria-labelledby="pm-note-title"
+            className="absolute left-1/2 top-24 w-[min(420px,calc(100%-2rem))] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white p-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const note = mspPmNotes.find((n) => n.id === openNote)
+              if (!note) return null
+              return (
+                <>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-[#6d5cff]">PM note {note.id}</p>
+                  <h3 id="pm-note-title" className="mt-1 text-[16px] font-semibold text-slate-900">
+                    {note.title}
+                  </h3>
+                  <dl className="mt-3 space-y-2 text-[13px] text-slate-700">
+                    <div>
+                      <dt className="text-[11px] font-semibold uppercase text-slate-500">Decision</dt>
+                      <dd>{note.decision}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px] font-semibold uppercase text-slate-500">Alternatives considered</dt>
+                      <dd>{note.alternatives}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px] font-semibold uppercase text-slate-500">Tradeoff</dt>
+                      <dd>{note.tradeoff}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[11px] font-semibold uppercase text-slate-500">Metric it moves</dt>
+                      <dd>{note.metric}</dd>
+                    </div>
+                  </dl>
+                  <button
+                    type="button"
+                    className="mt-3 text-[12px] font-medium text-[#6d5cff]"
+                    onClick={() => setOpenNote(null)}
+                  >
+                    Close
+                  </button>
+                </>
+              )
+            })()}
+          </div>
+        </div>
+      )}
+      {toast && (
+        <div className="fixed bottom-4 left-1/2 z-[90] -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-[13px] font-medium text-white shadow-lg">
+          {toast}
+        </div>
+      )}
+      </div>
     </div>
   )
 }

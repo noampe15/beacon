@@ -488,7 +488,7 @@ export const healthyResources = [
 export const tenants = [
   {
     id: "northwind",
-    name: "Northwind Retail",
+    name: "Northwind Logistics",
     env: "Production · us-east-1",
     initials: "NW",
     status: "live",
@@ -556,7 +556,156 @@ export const tenants = [
     namePrefix: "lms",
     riskShift: 11,
   },
+  {
+    id: "acme",
+    name: "Industrial Illusions",
+    env: "Production · us-east-2",
+    initials: "II",
+    status: "degraded",
+    statusLabel: "Elevated risk",
+    scoreShift: 4,
+    deltaShift: 1.7,
+    rtoShift: 2,
+    countFactor: 1.12,
+    namePrefix: "acm",
+    riskShift: -8,
+  },
+  {
+    id: "contoso",
+    name: "Contoso Logistics",
+    env: "Production · eu-central-1",
+    initials: "CL",
+    status: "live",
+    statusLabel: "All systems live",
+    scoreShift: -10,
+    deltaShift: -2.1,
+    rtoShift: 0,
+    countFactor: 0.91,
+    namePrefix: "cts",
+    riskShift: -28,
+  },
+  {
+    id: "fabrikam",
+    name: "Fabrikam Health",
+    env: "HIPAA · us-east-1",
+    initials: "FH",
+    status: "live",
+    statusLabel: "All systems live",
+    scoreShift: -14,
+    deltaShift: -3.2,
+    rtoShift: -1,
+    countFactor: 0.72,
+    namePrefix: "fbk",
+    riskShift: -48,
+  },
+  {
+    id: "globex",
+    name: "Globex Manufacturing",
+    env: "Production · ap-northeast-1",
+    initials: "GX",
+    status: "live",
+    statusLabel: "All systems live",
+    scoreShift: 2,
+    deltaShift: 0.8,
+    rtoShift: 3,
+    countFactor: 1.22,
+    namePrefix: "glx",
+    riskShift: -16,
+  },
+  {
+    id: "initech",
+    name: "Initech SaaS",
+    env: "Production · us-west-1",
+    initials: "IN",
+    status: "incident",
+    statusLabel: "Incident watch",
+    scoreShift: 9,
+    deltaShift: 3.6,
+    rtoShift: 5,
+    countFactor: 0.88,
+    namePrefix: "int",
+    riskShift: 6,
+  },
+  {
+    id: "umbrella",
+    name: "Umbrella Pharma",
+    env: "GxP · eu-west-2",
+    initials: "UP",
+    status: "live",
+    statusLabel: "All systems live",
+    scoreShift: -6,
+    deltaShift: -1.1,
+    rtoShift: 1,
+    countFactor: 0.79,
+    namePrefix: "umb",
+    riskShift: -34,
+  },
+  {
+    id: "stark",
+    name: "Stark Industrial",
+    env: "Production · us-east-1",
+    initials: "SI",
+    status: "degraded",
+    statusLabel: "Elevated risk",
+    scoreShift: 7,
+    deltaShift: 2.9,
+    rtoShift: 4,
+    countFactor: 1.41,
+    namePrefix: "stk",
+    riskShift: -4,
+  },
+  {
+    id: "wayne",
+    name: "Wayne Retail Group",
+    env: "Production · us-west-2",
+    initials: "WR",
+    status: "live",
+    statusLabel: "All systems live",
+    scoreShift: -3,
+    deltaShift: -0.6,
+    rtoShift: 1,
+    countFactor: 1.08,
+    namePrefix: "wyn",
+    riskShift: -38,
+  },
+  {
+    id: "piedpiper",
+    name: "Pied Piper Cloud",
+    env: "Production · eu-north-1",
+    initials: "PP",
+    status: "live",
+    statusLabel: "All systems live",
+    scoreShift: -12,
+    deltaShift: -2.4,
+    rtoShift: -2,
+    countFactor: 0.58,
+    namePrefix: "ppr",
+    riskShift: -52,
+  },
+  {
+    id: "cypress",
+    name: "Cypress Dental",
+    env: "Production · us-east-2",
+    initials: "CD",
+    status: "live",
+    statusLabel: "All systems live",
+    scoreShift: -14,
+    deltaShift: -2.8,
+    rtoShift: -3,
+    countFactor: 0.42,
+    namePrefix: "cyp",
+    riskShift: -60,
+  },
 ]
+
+export const GLOBAL_MSP = {
+  id: "global",
+  name: "Multi-tenant",
+  env: "All client portfolios",
+  initials: "MSP",
+  status: "live",
+  statusLabel: "Portfolio live",
+}
 
 function clamp(n, min, max) {
   return Math.min(max, Math.max(min, n))
@@ -610,7 +759,8 @@ function mapTenantResource(row, tenant, jitter, rangeRto) {
 }
 
 export function applyTenant(tenant, { businessUnits, deficitRows, risks, healthyResources = [], jitter = 0, range }) {
-  const rangeRto = range === "Last 30 Days" ? 3 : range === "Last 24 Hours" ? -2 : 0
+  const rangeKey = String(range ?? "").toLowerCase()
+  const rangeRto = rangeKey.includes("30") ? 3 : rangeKey.includes("24") ? -2 : 0
 
   const units = businessUnits.map((unit) => {
     const score = clamp(unit.score + tenant.scoreShift + jitter, 1, 99)
@@ -634,10 +784,351 @@ export function applyTenant(tenant, { businessUnits, deficitRows, risks, healthy
     }
   })
 
-  const tenantRisks = risks.map((row) => mapTenantResource(row, tenant, jitter, rangeRto))
+  const findings = risks.filter((row) => row.issue)
+  const rng = mulberry32(hash32(`queue:${tenant.id}`))
+  const count = Math.max(1, 3 + Math.floor(rng() * Math.max(1, findings.length - 2)))
+  const selected = pickShuffled(findings, rng).slice(0, Math.min(count, findings.length))
+  const tenantRisks = selected.map((row) => mapTenantResource(row, tenant, jitter, rangeRto))
   const tenantHealthy = healthyResources.map((row) => mapTenantResource(row, tenant, jitter, rangeRto))
 
   return { units, deficits, risks: tenantRisks, healthy: tenantHealthy }
+}
+
+function attachTenant(row, tenant) {
+  const clouds = ["AWS", "Azure", "GCP"]
+  const seed = Math.abs([...`${tenant.id}:${row.issue || row.id}`].reduce((n, ch) => n + ch.charCodeAt(0), 0))
+  return {
+    ...row,
+    tenantId: tenant.id,
+    tenantName: tenant.name,
+    tenantEnv: tenant.env,
+    tenantInitials: tenant.initials,
+    provider: row.healthy ? row.provider : clouds[seed % clouds.length],
+  }
+}
+
+export function applyPortfolio(selectedTenants, opts) {
+  const appliedList = selectedTenants.map((tenant) => ({
+    tenant,
+    applied: applyTenant(tenant, opts),
+  }))
+
+  const units = appliedList
+    .map(({ tenant, applied }) => {
+      const findings = applied.risks.filter((row) => !row.healthy && row.issue)
+      const score = findings.reduce((max, row) => Math.max(max, row.score), 0)
+      const resources = applied.deficits.reduce((sum, row) => sum + row.count, 0)
+      return {
+        id: tenant.id,
+        name: tenant.name,
+        initials: tenant.initials,
+        icon: "building",
+        rto: tenant.env,
+        resources,
+        findings: findings.length,
+        delta: Number((tenant.deltaShift + (opts.jitter ? 0.4 : 0)).toFixed(1)),
+        score,
+        severity: score ? severityFromScore(score) : "None",
+      }
+    })
+    .sort((a, b) => b.score - a.score)
+
+  const deficitMap = new Map()
+  for (const { applied } of appliedList) {
+    for (const row of applied.deficits) {
+      const prev = deficitMap.get(row.name) ?? {
+        name: row.name,
+        extra: row.extra,
+        segments: { Critical: 0, High: 0, Medium: 0, Low: 0 },
+      }
+      for (const key of Object.keys(prev.segments)) {
+        prev.segments[key] += row.segments[key] ?? 0
+      }
+      deficitMap.set(row.name, prev)
+    }
+  }
+  const deficits = [...deficitMap.values()].map((row) => ({
+    ...row,
+    count: Object.values(row.segments).reduce((a, b) => a + b, 0),
+  }))
+
+  const risks = appliedList.flatMap(({ tenant, applied }) =>
+    applied.risks.map((row) => attachTenant(row, tenant)),
+  )
+  const healthy = appliedList.flatMap(({ tenant, applied }) =>
+    applied.healthy.map((row) => attachTenant(row, tenant)),
+  )
+
+  return { units, deficits, risks, healthy }
+}
+
+export function clusterRisksByIssue(rows) {
+  const map = new Map()
+  for (const row of rows) {
+    if (row.healthy || !row.issue) continue
+    if (!map.has(row.issue)) map.set(row.issue, [])
+    map.get(row.issue).push(row)
+  }
+
+  const clusters = []
+  for (const [issue, members] of map) {
+    const tenants = []
+    const seen = new Set()
+    for (const member of members) {
+      const key = member.tenantId ?? member.name
+      if (seen.has(key)) continue
+      seen.add(key)
+      tenants.push({
+        id: member.tenantId ?? member.name,
+        name: member.tenantName ?? member.name,
+        env: member.tenantEnv ?? "",
+        initials: member.tenantInitials ?? (member.tenantName ?? member.name).slice(0, 2).toUpperCase(),
+        resource: member.name,
+        score: member.score,
+        priority: member.priority,
+        provider: member.provider,
+        type: member.type,
+      })
+    }
+    tenants.sort((a, b) => b.score - a.score)
+    const providerMap = new Map()
+    for (const member of members) {
+      const name = member.provider
+      if (!name) continue
+      const prev = providerMap.get(name) ?? { name, tenantIds: new Set(), count: 0 }
+      prev.count += 1
+      if (member.tenantId) prev.tenantIds.add(member.tenantId)
+      providerMap.set(name, prev)
+    }
+    const affectedProviders = [...providerMap.values()]
+      .map((item) => ({
+        name: item.name,
+        count: item.count,
+        tenantCount: item.tenantIds.size || item.count,
+      }))
+      .sort((a, b) => b.tenantCount - a.tenantCount)
+    const top = members.reduce((best, row) => (row.score >= best.score ? row : best))
+    clusters.push({
+      ...top,
+      id: `cluster:${issue}`,
+      issue,
+      cluster: true,
+      members,
+      affectedTenants: tenants,
+      tenantCount: tenants.length,
+      affectedProviders,
+      providerCount: affectedProviders.length,
+    })
+  }
+
+  clusters.sort((a, b) => b.score - a.score || b.tenantCount - a.tenantCount)
+  return clusters
+}
+
+const MSP_QUEUE_ISSUES = [
+  "Active IaC configuration drift",
+  "Snapshot verification protection gap",
+  "Missing disaster recovery runbook",
+  "Unencrypted replication traffic",
+  "TLS certificate expires in 12 days",
+  "Public blob container policy drift",
+  "HPA max replicas too low for peak",
+  "Backup window overlapping peak load",
+  "Stale firewall exception for contractor CIDR",
+  "No regional failover configured",
+  "Missing point-in-time restore coverage",
+  "Unpatched kernel CVE-2024-1086",
+  "Privileged container runtime allowed",
+  "S3 bucket versioning disabled",
+  "GuardDuty detector suspended",
+  "CloudTrail log file validation off",
+  "RDS deletion protection disabled",
+  "EBS volumes missing encryption",
+  "Security group allows 0.0.0.0/0 SSH",
+  "IAM user with unused access keys",
+  "Root account MFA not enforced",
+  "KMS key rotation disabled",
+  "Lambda timeout below SLO",
+  "ALB idle timeout too aggressive",
+  "WAF managed ruleset not attached",
+  "ECS task role overly permissive",
+  "EKS control plane logging disabled",
+  "Node group AMI 47 days stale",
+  "Cluster autoscaler max nodes too low",
+  "NAT gateway single-AZ bottleneck",
+  "VPC flow logs not retained",
+  "Route53 health check failing",
+  "ACM certificate auto-renewal failed",
+  "CloudFront origin protocol mismatch",
+  "ElastiCache at-rest encryption off",
+  "Redshift public accessibility on",
+  "Glue job IAM role wildcard actions",
+  "SQS queue encryption not set",
+  "SNS topic missing topic policy",
+  "EventBridge rule targeting deleted bus",
+  "Secrets Manager secret 400 days old",
+  "Parameter Store value unencrypted",
+  "Backup vault lock not enabled",
+  "AMI public share detected",
+  "ECR scan-on-push disabled",
+  "Image has critical CVE in base layer",
+  "Pod security admission in warn mode",
+  "Network policy missing for namespace",
+  "Service account token automount on",
+  "Ingress TLS secret expired",
+  "Persistent volume reclaim policy retain",
+  "etcd backup older than 24 hours",
+  "Azure NSG allows RDP from internet",
+  "Storage account public blob access",
+  "Key Vault purge protection off",
+  "SQL database TDE not enabled",
+  "AKS RBAC not integrated with Entra",
+  "Defender for Cloud plan not assigned",
+  "Activity log diagnostic missing",
+  "App Service HTTPS-only disabled",
+  "Function app CORS set to wildcard",
+  "Cosmos DB firewall allow Azure IPs",
+  "Load balancer health probe failing",
+  "VMSS autoscale cooldown too long",
+  "Private endpoint missing DNS zone",
+  "GCP Cloud SQL SSL not required",
+  "GKE workload identity not enabled",
+  "GCS bucket uniform access off",
+  "IAM service account key 90 days old",
+  "Firewall rule allows 0.0.0.0/0 RDP",
+  "Cloud Armor policy not attached",
+  "Pub/Sub topic without dead-letter",
+  "BigQuery dataset public IAM member",
+  "Cloud Run ingress set to all",
+  "VPC Service Controls perimeter gap",
+  "Secret Manager CMEK not configured",
+  "Compute disk snapshot schedule missing",
+  "OS Login not enforced on project",
+]
+
+function hash32(str) {
+  let h = 2166136261
+  for (let i = 0; i < str.length; i += 1) {
+    h ^= str.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+function mulberry32(seed) {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function pickShuffled(items, rng) {
+  const next = [...items]
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[next[i], next[j]] = [next[j], next[i]]
+  }
+  return next
+}
+
+export function buildRemediationQueue(selectedTenants) {
+  const templates = risks.filter((row) => row.issue)
+  if (!selectedTenants.length || !templates.length) return []
+
+  const clouds = ["AWS", "Azure", "GCP"]
+  const scopeKey = selectedTenants.map((item) => item.id).join(",")
+
+  return MSP_QUEUE_ISSUES.map((issue, index) => {
+    const template = templates[index % templates.length]
+    const rng = mulberry32(hash32(`${issue}:${scopeKey}`))
+    const tenantCount = 1 + Math.floor(rng() * selectedTenants.length)
+    const chosenTenants = pickShuffled(selectedTenants, rng).slice(0, tenantCount)
+    const members = chosenTenants.map((tenant) => {
+      const provider = clouds[Math.floor(rng() * clouds.length)]
+      const row = attachTenant(mapTenantResource(template, tenant, 0, 0), tenant)
+      return {
+        ...row,
+        issue,
+        provider,
+        score: clamp(template.score - Math.floor(rng() * 36) + (tenant.riskShift ?? 0), 18, 99),
+      }
+    })
+    members.forEach((member) => {
+      member.priority = severityFromScore(member.score)
+    })
+    const top = members.reduce((best, row) => (row.score >= best.score ? row : best))
+    const tenants = members.map((member) => ({
+      id: member.tenantId,
+      name: member.tenantName,
+      env: member.tenantEnv ?? "",
+      initials: member.tenantInitials,
+      resource: member.name,
+      score: member.score,
+      priority: member.priority,
+      provider: member.provider,
+      type: member.type,
+    }))
+    tenants.sort((a, b) => b.score - a.score)
+    const providerMap = new Map()
+    for (const member of members) {
+      const prev = providerMap.get(member.provider) ?? { name: member.provider, tenantIds: new Set(), count: 0 }
+      prev.count += 1
+      prev.tenantIds.add(member.tenantId)
+      providerMap.set(member.provider, prev)
+    }
+    const affectedProviders = [...providerMap.values()]
+      .map((item) => ({
+        name: item.name,
+        count: item.count,
+        tenantCount: item.tenantIds.size,
+      }))
+      .sort((a, b) => b.tenantCount - a.tenantCount)
+
+    return {
+      ...top,
+      id: `cluster:${issue}`,
+      issue,
+      cluster: true,
+      members,
+      affectedTenants: tenants,
+      tenantCount: tenants.length,
+      affectedProviders,
+      providerCount: affectedProviders.length,
+      provider: affectedProviders[0]?.name ?? top.provider,
+    }
+  }).sort((a, b) => b.score - a.score || b.tenantCount - a.tenantCount)
+}
+
+export function getTriageBrief(cluster) {
+  const tenants = cluster.affectedTenants ?? []
+  const n = cluster.tenantCount ?? tenants.length
+  const names = tenants.slice(0, 3).map((item) => item.name)
+  const rest = Math.max(0, n - names.length)
+  const list =
+    rest > 0 ? `${names.join(", ")}, and ${rest} more` : names.join(names.length === 2 ? " and " : ", ")
+  const lead = tenants[0]
+  const providerNames = (cluster.affectedProviders ?? [])
+    .map((item) => item.name)
+    .filter(Boolean)
+  const providerLine =
+    providerNames.length > 1
+      ? ` Providers in scope: ${providerNames.join(", ")}.`
+      : providerNames.length === 1
+        ? ` Provider: ${providerNames[0]}.`
+        : ""
+  return `AI clustered “${cluster.issue}” across ${n} client ${
+    n === 1 ? "environment" : "environments"
+  } (${list || "the selected portfolio"}).${providerLine} Blast radius is ${cluster.priority} with a systemic score of ${
+    cluster.score
+  }/100.${
+    lead
+      ? ` Highest exposure is ${lead.name} on ${lead.resource}${lead.env ? ` (${lead.env})` : ""}.`
+      : ""
+  } Recommended path: one agentic IaC deploy that remediates every affected tenant in a single change window.`
 }
 
 export function affectsNote(related) {
@@ -946,6 +1437,13 @@ export const remediations = {
 }
 
 export function getInvestigation(risk) {
+  if (risk?.cluster) {
+    return {
+      confidence: 94,
+      narrative: getTriageBrief(risk),
+      peers: risk.affectedTenants ?? [],
+    }
+  }
   const peers = risk.relatedResources ?? []
   const plan = getRemediation(risk.issue)
   const isDrift = /iac|drift/i.test(risk.issue)
@@ -961,11 +1459,16 @@ export function getInvestigation(risk) {
 
 export function getAiRemediation(risk) {
   const plan = getRemediation(risk.issue)
-  const addr = risk.name.replace(/-/g, "_")
+  const addr = String(risk.issue || risk.name).toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 40)
   const isDrift = /iac|drift/i.test(risk.issue)
+  const tenantCount = risk.tenantCount ?? risk.affectedTenants?.length ?? 1
   const summary = isDrift
-    ? `Reconcile live RDS state with Terraform: restore 14-day backup retention, Multi-AZ, and deletion protection on ${risk.name}. This removes the +${risk.rtoDelta}h RTO gap on ${risk.tier} ${risk.businessUnit} and realigns replicas with the master plan.`
-    : `${plan.why} Suggested IaC below encodes the first action (${plan.actions[0]?.title ?? "patch"}) for ${risk.name}.`
+    ? `AI will reconcile live state with Terraform across ${tenantCount} tenant ${
+        tenantCount === 1 ? "environment" : "environments"
+      }: restore 14-day backup retention, Multi-AZ, and deletion protection. This removes the +${risk.rtoDelta}h RTO gap and realigns every drifted replica with the master plan.`
+    : `${plan.why} Suggested IaC below encodes the first action (${plan.actions[0]?.title ?? "patch"}) for all ${tenantCount} affected ${
+        tenantCount === 1 ? "tenant" : "tenants"
+      }.`
 
   const diff = isDrift
     ? [
@@ -1011,7 +1514,7 @@ export function getRemediation(issue) {
   )
 }
 
-export const rangeOptions = ["Last 24 Hours", "Last 7 Days", "Last 30 Days"]
+export const rangeOptions = ["Last 24 hours", "Last 7 days", "Last 30 days"]
 export const typeOptions = ["RDS", "VM", "EKS", "GKE", "Cache", "LB", "Storage", "VPN", "Warehouse"]
 export const issueOptions = [
   "Active IaC configuration drift",

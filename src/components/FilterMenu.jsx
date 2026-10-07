@@ -32,7 +32,10 @@ export default function FilterMenu({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium transition ${
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={`${label} filter${value ? `: ${value}` : ""}`}
+        className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3 text-[13px] font-medium outline-none transition focus-visible:ring-2 focus-visible:ring-[#6d5cff] ${
           active
             ? "border-[#6d5cff]/40 bg-[#f3f1ff] text-[#6d5cff]"
             : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react"
-import { Bell, ChevronDown, Download, RefreshCw } from "lucide-react"
-import { envRiskSeverity, rangeOptions } from "../data"
-import TenantSelector from "./TenantSelector"
-import { EnvRiskBadge } from "./Badges"
+import { Bell, ChevronDown, Clock } from "lucide-react"
+import { rangeOptions } from "../data"
+import { ExtraFilters, headerFiltersActive, visibleFilterKeys } from "./NavFilters"
+import AllFiltersPopover from "./AllFiltersPopover"
 
 function NotificationsBell({ items, onOpenNotification }) {
   const [open, setOpen] = useState(false)
@@ -24,7 +24,7 @@ function NotificationsBell({ items, onOpenNotification }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`relative flex h-9 w-9 items-center justify-center rounded-full border ${
+        className={`relative flex h-9 w-9 items-center justify-center rounded-full border outline-none focus-visible:ring-2 focus-visible:ring-[#6d5cff] ${
           open
             ? "border-[#6d5cff]/40 bg-[#f3f1ff] text-[#6d5cff]"
             : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
@@ -91,79 +91,150 @@ function NotificationsBell({ items, onOpenNotification }) {
   )
 }
 
+function AccountMenu({ isGlobal, pmNotes, caseStudy, onTogglePmNotes, onToggleCaseStudy }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function onDoc(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener("mousedown", onDoc)
+    return () => document.removeEventListener("mousedown", onDoc)
+  }, [])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="Account menu"
+        onClick={() => setOpen((v) => !v)}
+        className={`inline-flex h-9 items-center gap-2 rounded-full border bg-white pl-1 pr-2.5 text-[13px] font-medium shadow-sm outline-none hover:border-slate-300 focus-visible:ring-2 focus-visible:ring-[#6d5cff] sm:pr-3 ${
+          open ? "border-[#6d5cff]/40 text-slate-800" : "border-slate-200 text-slate-700"
+        }`}
+      >
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#6d5cff] text-[11px] font-semibold text-white">
+          MR
+        </span>
+        <span className="hidden max-w-[9rem] truncate sm:inline">Molly Reid</span>
+        <ChevronDown className="hidden h-3.5 w-3.5 text-slate-400 sm:block" aria-hidden="true" />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 z-50 mt-2 w-48 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+          {isGlobal && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                className="block w-full px-3 py-2 text-left text-[13px] text-slate-700 outline-none hover:bg-slate-50"
+                onClick={() => {
+                  onTogglePmNotes?.()
+                  setOpen(false)
+                }}
+              >
+                {pmNotes ? "Hide PM Notes" : "Show PM Notes"}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="block w-full px-3 py-2 text-left text-[13px] text-slate-700 outline-none hover:bg-slate-50"
+                onClick={() => {
+                  onToggleCaseStudy?.()
+                  setOpen(false)
+                }}
+              >
+                {caseStudy ? "Hide Case Study" : "Show Case Study"}
+              </button>
+            </>
+          )}
+          <p className="px-3 py-2 text-[12px] text-slate-500">Signed in as Molly Reid</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Header({
-  tenants,
-  tenantId,
-  onTenantChange,
-  envRisk,
-  envRiskByTenant,
+  pageTitle,
+  breadcrumb,
   range,
   setRange,
-  onRefresh,
-  refreshing,
-  onExport,
   notifications,
   onOpenNotification,
+  page,
+  filters,
+  options,
+  setFilter,
+  isGlobal = false,
+  remediationView = "queue",
+  pmNotes = false,
+  caseStudy = false,
+  onTogglePmNotes,
+  onToggleCaseStudy,
 }) {
+  const extraActive = headerFiltersActive(page, isGlobal, filters, remediationView)
+  const showAllFilters = visibleFilterKeys(page, isGlobal, remediationView).length > 0
+
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 lg:px-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#6d5cff]">
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-            <path
-              d="M12 4.5L19 8.5V15.5L12 19.5L5 15.5V8.5L12 4.5Z"
-              stroke="white"
-              strokeWidth="1.8"
-            />
-            <circle cx="12" cy="12" r="2.2" fill="white" />
-          </svg>
-        </div>
-        <span className="text-[18px] font-semibold tracking-tight text-slate-900">Beacon</span>
-        <TenantSelector
-          tenants={tenants}
-          value={tenantId}
-          onChange={onTenantChange}
-          envRiskByTenant={envRiskByTenant}
-        />
-        <EnvRiskBadge
-          severity={envRiskSeverity[envRisk] ?? "None"}
-          label={envRisk}
-        />
+    <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/80 bg-[#f4f5f8] px-3 py-2.5 lg:px-4">
+      <div className="min-w-0">
+        {breadcrumb?.length > 0 && (
+          <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-[12px] text-slate-500">
+            {breadcrumb.map((crumb, i) => (
+              <span key={`${crumb}-${i}`} className="flex items-center gap-1">
+                {i > 0 && (
+                  <span aria-hidden="true" className="text-slate-300">
+                    /
+                  </span>
+                )}
+                <span className={i === breadcrumb.length - 1 ? "font-medium text-slate-700" : ""}>{crumb}</span>
+              </span>
+            ))}
+          </nav>
+        )}
+        <h1 className="truncate text-[16px] font-semibold tracking-tight text-slate-900">{pageTitle}</h1>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 shrink-0">
         <label className="relative">
+          <span className="sr-only">Date range</span>
+          <Clock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" aria-hidden="true" />
           <select
             value={range}
             onChange={(e) => setRange(e.target.value)}
-            className="h-9 appearance-none rounded-full border border-slate-200 bg-white py-0 pl-3 pr-8 text-[13px] font-medium text-slate-600 outline-none"
+            aria-label="Date range"
+            className="h-9 appearance-none rounded-full border border-slate-200 bg-white py-0 pl-9 pr-8 text-[13px] font-medium text-slate-700 shadow-sm outline-none hover:border-slate-300 focus-visible:ring-2 focus-visible:ring-[#6d5cff]"
           >
             {rangeOptions.map((opt) => (
-              <option key={opt}>{opt}</option>
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" aria-hidden="true" />
         </label>
+        {showAllFilters && (
+          <AllFiltersPopover size="header" active={extraActive}>
+            <ExtraFilters
+              page={page}
+              filters={filters}
+              options={options}
+              setFilter={setFilter}
+              isGlobal={isGlobal}
+              remediationView={remediationView}
+            />
+          </AllFiltersPopover>
+        )}
         <NotificationsBell items={notifications} onOpenNotification={onOpenNotification} />
-        <button
-          type="button"
-          onClick={onRefresh}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-600"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-          Refresh
-        </button>
-        <button
-          type="button"
-          onClick={onExport}
-          className="inline-flex h-9 items-center gap-1.5 rounded-full bg-slate-950 px-3.5 text-[13px] font-semibold text-white"
-        >
-          <Download className="h-3.5 w-3.5" />
-          Export
-        </button>
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#6d5cff] text-[12px] font-semibold text-white">
-          MR
-        </div>
+        <AccountMenu
+          isGlobal={isGlobal}
+          pmNotes={pmNotes}
+          caseStudy={caseStudy}
+          onTogglePmNotes={onTogglePmNotes}
+          onToggleCaseStudy={onToggleCaseStudy}
+        />
       </div>
     </header>
   )

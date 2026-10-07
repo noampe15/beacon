@@ -1,3 +1,5 @@
+import { Shield, ShieldAlert, ShieldCheck } from "lucide-react"
+
 export const severityStyles = {
   Critical: {
     text: "text-[#e11d48]",
@@ -47,14 +49,29 @@ export const providerStyles = {
   GCP: "bg-[#ecfdf3] text-[#16a34a]",
 }
 
-export function SeverityBadge({ severity, label }) {
+export function SeverityBadge({ severity, label, icon: Icon }) {
   const style = severityStyles[severity] ?? severityStyles.Medium
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${style.bg} ${style.text}`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />
-      {label ?? severity}
+      {Icon ? <Icon className="h-3 w-3" aria-hidden="true" /> : <span className={`h-1.5 w-1.5 rounded-full ${style.dot}`} />}
+      <span>{label ?? severity}</span>
+    </span>
+  )
+}
+
+export function TenantStatusBadge({ health }) {
+  const map = {
+    critical: { label: "Critical", Icon: ShieldAlert, className: "bg-rose-50 text-rose-800", iconClass: "text-[#e11d48]" },
+    warning: { label: "SLA Warning", Icon: Shield, className: "bg-orange-50 text-amber-800", iconClass: "text-[#ea580c]" },
+    secure: { label: "Secure", Icon: ShieldCheck, className: "bg-emerald-50 text-emerald-800", iconClass: "text-[#16a34a]" },
+  }
+  const s = map[health] ?? map.secure
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium ${s.className}`}>
+      <s.Icon className={`h-3 w-3 ${s.iconClass}`} aria-hidden="true" />
+      {s.label}
     </span>
   )
 }
@@ -118,7 +135,7 @@ export function ScoreRing({ score, size = 40, stroke = 3, healthy = false }) {
           strokeDashoffset={offset}
         />
       </svg>
-      <span className="absolute text-[11px] font-semibold text-slate-800">{score}</span>
+      <span className="absolute text-[11px] font-semibold tabular-nums text-slate-800">{score}</span>
     </div>
   )
 }
