@@ -29,7 +29,7 @@ export default function LatestAiActivity({ totals, entries, periodChip = "last 7
   }
 
   return (
-    <section className="flex h-full min-h-[28rem] flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
+    <section className="flex h-full min-h-[28rem] w-full min-w-0 flex-1 flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04)]">
       <div className="flex items-start justify-between gap-2">
         <div>
           <h2 className="text-[16px] font-semibold text-slate-900">Latest activity</h2>

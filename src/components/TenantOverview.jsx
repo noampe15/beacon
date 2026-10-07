@@ -21,9 +21,9 @@ export default function TenantOverview({
     <div className="relative space-y-4" data-pin="tenant-layout">
       {pmNotes && <AnnotationPin n={13} noteId={13} onOpen={onOpenNote} className="absolute -left-1 top-0" />}
       <TenantSummaryStrip summary={overview.summary} pmNotes={pmNotes} onOpenNote={onOpenNote} />
-      <div className="relative grid items-stretch gap-4 lg:grid-cols-2" data-pin="tenant-queue-activity">
+      <div className="relative grid items-stretch gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]" data-pin="tenant-queue-activity">
         {pmNotes && <AnnotationPin n={12} noteId={12} onOpen={onOpenNote} className="absolute right-2 top-2 z-10" />}
-        <div className="order-2 flex min-h-0 lg:order-1">
+        <div className="order-2 flex min-h-0 min-w-0 lg:order-1">
           <LatestAiActivity
             totals={overview.activityTotals}
             entries={overview.activity}
@@ -32,7 +32,7 @@ export default function TenantOverview({
             onAction={onActivityAction}
           />
         </div>
-        <div className="order-1 flex min-h-0 lg:order-2">
+        <div className="order-1 flex min-h-0 min-w-0 lg:order-2">
           <ActionQueueRail
             compact
             scope="tenant"
